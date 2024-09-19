@@ -1,0 +1,28 @@
+{
+  "type": "directory",
+  "uri": "file:///github/react-file-tree",
+  "children": [
+    {
+      "type": "file",
+      "uri": "file:///github/react-file-tree/client.js"
+    },
+    {
+      "type": "file",
+      "uri": "file:///github/react-file-tree/index.ts"
+    },
+    {
+      "type": "directory",
+      "uri": "file:///github/react-file-tree/lib",
+      "children": [
+        {
+          "type": "file",
+          "uri": "file:///github/react-file-tree/lib/utils.ts"
+        },
+        {
+          "type": "file",
+          "uri": "file:///github/react-file-tree/lib/hooks.ts"
+        }
+      ]
+    }
+  ]
+}

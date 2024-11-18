@@ -272,9 +272,7 @@ export const updatePath = (
 };
 
 export const checkIfNameIsValid = (name: string) => {
-  console.log("received name in checkIfNameIsValid", name);
   if (name.length === 0) {
-    console.log("name length is 0");
     return false;
   }
 
@@ -333,8 +331,6 @@ export const addChildrenPathsToDeleteArr = (
   });
 };
 
-export const addChildrenPathsToRenameArr = () => {};
-
 export const deletePathsFromFilesContentObj = (
   node: TreeNode,
   filesContent: FileContentObj
@@ -353,41 +349,102 @@ export const deletePathsFromFilesContentObj = (
   });
 };
 
-// export const removeTab = (path: string) => {
-//   console.log("removeTab called");
-//   const {
-//     fileTabs,
-//     lastSelectedFilePaths,
-//     selectedFilePath,
-//     setFileTabs,
-//     setSelectedFilePath,
-//     setLastSelectedFilePaths,
-//   } = useWorkspaceStore.getState();
-//   const newTabs = fileTabs.filter((tab) => tab !== path);
-//   // lastSelectedFilePaths.current = lastSelectedFilePaths.current.filter(
-//   //   (prevPath) => prevPath !== path
-//   // );
-//   // setLastSelectedFilePaths((prev) =>
-//   //   prev.filter((prevPath) => prevPath !== path)
-//   // );
+export const updateFilePathsInFileTabBar = (
+  renamePath: RenamePathObj | undefined,
+  renamePaths: RenamePathObj[] | undefined
+) => {
+  const {
+    fileTabs,
+    setFileTabs,
+    selectedFilePath,
+    setSelectedFilePath,
+    lastSelectedFilePaths,
+    setLastSelectedFilePaths,
+  } = useWorkspaceStore.getState();
 
-//   // Remove path from lastSelectedFilePaths which has been closed
-//   let lastSelectedFilteredPaths = lastSelectedFilePaths.filter(
-//     (prevPath) => prevPath !== path
-//   );
-//   setFileTabs(newTabs);
-//   if (path === selectedFilePath) {
-//     if (newTabs.length > 0) {
-//       // setSelectedFilePath(lastSelectedFilePaths.current.pop() || "");
-//       setSelectedFilePath(lastSelectedFilteredPaths.pop() || "");
-//     } else {
-//       // lastSelectedFilePaths.current = [];
-//       lastSelectedFilteredPaths = [];
-//       setSelectedFilePath("");
-//     }
-//   }
-//   setLastSelectedFilePaths(lastSelectedFilteredPaths);
-// };
+  if (renamePath) {
+    const { oldPath, newPath } = renamePath;
+    const updatedFileTabs = [...fileTabs].map((tab) =>
+      tab === oldPath ? newPath : tab
+    );
+    const updatedLastSelectedFilePaths = [...lastSelectedFilePaths].map(
+      (path) => (path === oldPath ? newPath : path)
+    );
+    setFileTabs(updatedFileTabs);
+    setLastSelectedFilePaths(updatedLastSelectedFilePaths);
+    if (selectedFilePath === oldPath) {
+      setSelectedFilePath(newPath);
+    }
+  } else if (renamePaths) {
+    let updatedFileTabs = [...fileTabs];
+    let updatedLastSelectedFilePaths = [...lastSelectedFilePaths];
+    let newSelectedFilePath: string;
+
+    renamePaths.forEach(({ oldPath, newPath }) => {
+      if (selectedFilePath === oldPath) {
+        newSelectedFilePath = newPath;
+      }
+      // Update fileTabs
+      updatedFileTabs = updatedFileTabs.map((tab: string) =>
+        tab === oldPath ? newPath : tab
+      );
+
+      // Update lastSelectedFileTabs
+      updatedLastSelectedFilePaths = updatedLastSelectedFilePaths.map(
+        (tab: string) => (tab === oldPath ? newPath : tab)
+      );
+    });
+
+    setFileTabs(updatedFileTabs);
+    setLastSelectedFilePaths(updatedLastSelectedFilePaths);
+    // @ts-ignore
+    if (newSelectedFilePath) {
+      setSelectedFilePath(newSelectedFilePath);
+    }
+  } else {
+    return;
+  }
+};
+
+export const deleteFilePathsInFileTabBar = (
+  deletedPath: string | undefined,
+  deletedPaths: string[] | undefined
+) => {
+  const {
+    fileTabs,
+    setFileTabs,
+    selectedFilePath,
+    setSelectedFilePath,
+    lastSelectedFilePaths,
+    setLastSelectedFilePaths,
+  } = useWorkspaceStore.getState();
+  if (deletedPath) {
+    const updatedFileTabs = [...fileTabs].filter((tab) => tab !== deletedPath);
+    const updatedLastSelectedFilePaths = [...lastSelectedFilePaths].filter(
+      (path) => path !== deletedPath
+    );
+    setFileTabs(updatedFileTabs);
+    if (selectedFilePath === deletedPath) {
+      setSelectedFilePath(updatedLastSelectedFilePaths.pop() || "");
+    }
+    setLastSelectedFilePaths(updatedLastSelectedFilePaths);
+  } else if (deletedPaths) {
+    const deletedPathsSet = new Set(deletedPaths);
+    const updatedFileTabs = [...fileTabs].filter(
+      (tab) => !deletedPathsSet.has(tab)
+    );
+    const updatedLastSelectedFilePaths = [...lastSelectedFilePaths].filter(
+      (path) => !deletedPathsSet.has(path)
+    );
+    if (deletedPathsSet.has(selectedFilePath)) {
+      setSelectedFilePath(updatedLastSelectedFilePaths.pop() || "");
+    }
+    setFileTabs(updatedFileTabs);
+    setLastSelectedFilePaths(updatedLastSelectedFilePaths);
+  } else {
+    return;
+  }
+};
 
 // const config: ManifestConfig = {
 //   activeIconPack: "angular",

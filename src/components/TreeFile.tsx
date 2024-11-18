@@ -50,8 +50,6 @@ const TreeFile = ({
 
   const handleFileClick = useCallback(
     (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
-      console.log("file clicked ->", node);
-      console.log(e);
       e.stopPropagation();
       const actionSelected = (e.target as Element)
         .closest(".action-icon")
@@ -60,15 +58,12 @@ const TreeFile = ({
         switch (actionSelected) {
           case "rename":
             setInputState({ show: true, value: node.name, error: "" });
-            console.log("rename");
             return;
           case "del-file":
             deleteFileModalRef.current?.showModal();
-            console.log("delete");
             return;
         }
       } else {
-        console.log("setting selected file path ->", node.path);
         setSelectedFilePath(node.path);
       }
     },
@@ -110,7 +105,6 @@ const TreeFile = ({
   const handleInputSubmit = (e?: React.FormEvent<HTMLFormElement>) => {
     // debugger;
     e?.preventDefault();
-    console.log(e?.currentTarget);
     try {
       handleRename(node, inputState.value, node.type);
       setInputState({ show: false, value: "", error: "" });
@@ -119,7 +113,6 @@ const TreeFile = ({
       if (!e) {
         setInputState({ show: false, value: "", error: "" });
       }
-      console.log("printing error from submit");
       console.error(error);
     }
   };

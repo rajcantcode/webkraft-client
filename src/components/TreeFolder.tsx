@@ -130,7 +130,6 @@ const TreeFolder = ({
           // handleAddFolder();
           return;
         case "del-folder":
-          console.log("User wants to delete folder");
           deleteFolderModalRef.current?.showModal();
           return;
         default:
@@ -146,7 +145,6 @@ const TreeFolder = ({
         }
       }
       setIsOpen(!isOpen);
-      console.log("User wants to open/close folder");
       return;
     }
   };

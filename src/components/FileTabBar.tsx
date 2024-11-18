@@ -1,10 +1,4 @@
-import React, {
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useRef,
-  useState,
-} from "react";
+import React, { useEffect } from "react";
 import { RenamePathObj, useWorkspaceStore } from "../store";
 import { getFileIcon } from "../lib/utils";
 import exitIcon from "../icons/exit.svg";
@@ -18,193 +12,45 @@ import {
 } from "./ui/ToolTip";
 
 const FileTabBar = () => {
-  // const {
-  //   selectedFilePath,
-  //   setSelectedFilePath,
-  //   fileTabs,
-  //   setFileTabs,
-  //   lastSelectedFilePaths,
-  //   setLastSelectedFilePaths,
-  // } = useWorkspaceStore((state) => ({
-  //   selectedFilePath: state.selectedFilePath,
-  //   setSelectedFilePath: state.setSelectedFilePath,
-  //   fileTabs: state.fileTabs,
-  //   setFileTabs: state.setFileTabs,
-  //   lastSelectedFilePaths: state.lastSelectedFilePaths,
-  //   setLastSelectedFilePaths: state.setLastSelectedFilePaths,
-  // }));
   const selectedFilePath = useWorkspaceStore((state) => state.selectedFilePath);
   const setSelectedFilePath = useWorkspaceStore(
     (state) => state.setSelectedFilePath
   );
-  const setRenamedPaths = useWorkspaceStore((state) => state.setRenamedPaths);
-  const renamedPaths = useWorkspaceStore((state) => state.renamedPaths);
-  const deletedPaths = useWorkspaceStore((state) => state.deletedPaths);
-
-  const [fileTabs, setFileTabs] = useState<string[]>([]);
-  const lastSelectedFilePaths = useRef<string[]>([]);
+  const fileTabs = useWorkspaceStore((state) => state.fileTabs);
+  const setFileTabs = useWorkspaceStore((state) => state.setFileTabs);
+  const lastSelectedFilePaths = useWorkspaceStore(
+    (state) => state.lastSelectedFilePaths
+  );
+  const setLastSelectedFilePaths = useWorkspaceStore(
+    (state) => state.setLastSelectedFilePaths
+  );
 
   useEffect(() => {
     if (!selectedFilePath) return;
-    lastSelectedFilePaths.current.push(selectedFilePath);
-    // if (!fileTabs.includes(selectedFilePath)) {
-    //   console.log("setting file tabs in useEffect -> ", selectedFilePath);
-    //   console.log(fileTabs);
-    //   setFileTabs((prev) => [...prev, selectedFilePath]);
-    // }
-    // setLastSelectedFilePaths((prev) => [...prev, selectedFilePath]);
-  }, [selectedFilePath]);
-
-  useEffect(() => {
-    console.log(`received renamedPaths in useEffect ->`, renamedPaths);
-    if (renamedPaths.length > 0) {
-      renameFileTabPaths(renamedPaths);
-    }
-  }, [renamedPaths]);
-
-  useEffect(() => {
-    if (deletedPaths.length > 0) {
-      removeDeletedFileTabPaths(deletedPaths);
-    }
-  }, [deletedPaths]);
+    setLastSelectedFilePaths((prev) => [...prev, selectedFilePath]);
+  }, [selectedFilePath, setLastSelectedFilePaths]);
 
   useEffect(() => {
     if (selectedFilePath && !fileTabs.includes(selectedFilePath)) {
-      console.log(
-        `👹👹 In top level if of FileTabBar, setting file tabs to ->,`
-      );
-      // debugger;
-      console.log(`fileTabs before -> ${fileTabs}`);
-      console.log(`selectedFilePath -> ${selectedFilePath}`);
       setFileTabs([...fileTabs, selectedFilePath]);
-      // setFileTabs((prev) => [...prev, selectedFilePath]);
     }
-  }, [selectedFilePath, fileTabs, setFileTabs]);
-  const renameFileTabPaths = useCallback(
-    (renameValues: RenamePathObj[]) => {
-      // debugger;
-      console.log(`In renameFileTabPaths, initially ->`);
-      console.log("fileTabs ->", fileTabs);
-      console.log(
-        "lastSelectedFilePaths.current ->",
-        lastSelectedFilePaths.current
-      );
-      // Create copies of the arrays to avoid mutating the originals
-      let updatedFileTabs: string[] = [...fileTabs];
-      let updatedLastSelectedFileTabs: string[] = [
-        ...lastSelectedFilePaths.current,
-      ];
-      let newSelectedFilePath: string;
-
-      // Process each rename operation
-      renameValues.forEach(({ oldPath, newPath }: RenamePathObj) => {
-        if (selectedFilePath === oldPath) {
-          newSelectedFilePath = newPath;
-        }
-        // Update fileTabs
-        updatedFileTabs = updatedFileTabs.map((tab: string) =>
-          tab === oldPath ? newPath : tab
-        );
-
-        // Update lastSelectedFileTabs
-        updatedLastSelectedFileTabs = updatedLastSelectedFileTabs.map(
-          (tab: string) => (tab === oldPath ? newPath : tab)
-        );
-      });
-
-      console.log("updatedFileTabs ->", updatedFileTabs);
-      console.log(
-        "updatedLastSelectedFileTabs ->",
-        updatedLastSelectedFileTabs
-      );
-      setFileTabs(updatedFileTabs);
-      setRenamedPaths([]);
-      if (newSelectedFilePath) {
-        console.log("setting selected file path ->", newSelectedFilePath);
-        setSelectedFilePath(newSelectedFilePath);
-      }
-      lastSelectedFilePaths.current = updatedLastSelectedFileTabs;
-    },
-    [fileTabs, setFileTabs, selectedFilePath, setSelectedFilePath]
-  );
-  const removeDeletedFileTabPaths = useCallback(
-    (deletedPaths: string[]) => {
-      // Create copies of the arrays to avoid mutating the originals
-      let updatedFileTabs: string[] = [...fileTabs];
-      let updatedLastSelectedFileTabs: string[] = [
-        ...lastSelectedFilePaths.current,
-      ];
-
-      // Create a Set for faster lookups
-      const deletedPathsSet: Set<string> = new Set(deletedPaths);
-
-      // Remove deleted paths from fileTabs
-      updatedFileTabs = updatedFileTabs.filter(
-        (tab: string) => !deletedPathsSet.has(tab)
-      );
-
-      // Remove deleted paths from lastSelectedFileTabs
-      updatedLastSelectedFileTabs = updatedLastSelectedFileTabs.filter(
-        (tab: string) => !deletedPathsSet.has(tab)
-      );
-
-      console.log("updatedFileTabs ->", updatedFileTabs);
-      console.log(
-        "updatedLastSelectedFileTabs ->",
-        updatedLastSelectedFileTabs
-      );
-      setFileTabs(updatedFileTabs);
-      lastSelectedFilePaths.current = updatedLastSelectedFileTabs;
-      console.log(
-        "lastSelectedFilePaths.current ->",
-        lastSelectedFilePaths.current
-      );
-    },
-    [fileTabs, setFileTabs]
-  );
-
-  // if (selectedFilePath && !fileTabs.includes(selectedFilePath)) {
-  //   console.log(`👹👹 In top level if of FileTabBar, setting file tabs to ->,`);
-  //   debugger;
-  //   console.log(`fileTabs before -> ${fileTabs}`);
-  //   console.log(`selectedFilePath -> ${selectedFilePath}`);
-  //   setFileTabs([...fileTabs, selectedFilePath]);
-  //   // setFileTabs((prev) => [...prev, selectedFilePath]);
-  // }
+  }, [selectedFilePath, fileTabs]);
 
   const removeTab = (path: string) => {
-    console.log("removeTab called");
     const newTabs = fileTabs.filter((tab) => tab !== path);
-    lastSelectedFilePaths.current = lastSelectedFilePaths.current.filter(
+    const filteredLastSelectedFilePaths = [...lastSelectedFilePaths].filter(
       (prevPath) => prevPath !== path
     );
-    // setLastSelectedFilePaths((prev) =>
-    //   prev.filter((prevPath) => prevPath !== path)
-    // );
-    // Remove path from lastSelectedFilePaths which has been closed
-    // let lastSelectedFilteredPaths = lastSelectedFilePaths.filter(
-    //   (prevPath) => prevPath !== path
-    // );
-    console.log(`👹👹 In removeTab, setting file tabs to -> ${newTabs}`);
     setFileTabs(newTabs);
     if (path === selectedFilePath) {
       if (newTabs.length > 0) {
-        console.log(
-          "setting selected file path ->",
-          lastSelectedFilePaths.current[
-            lastSelectedFilePaths.current.length - 1
-          ]
-        );
-        setSelectedFilePath(lastSelectedFilePaths.current.pop() || "");
-        // setSelectedFilePath(lastSelectedFilteredPaths.pop() || "");
+        setSelectedFilePath(filteredLastSelectedFilePaths.pop() || "");
+        setLastSelectedFilePaths(filteredLastSelectedFilePaths);
       } else {
-        console.log("setting selected file path -> ''");
-        lastSelectedFilePaths.current = [];
-        // lastSelectedFilteredPaths = [];
+        setLastSelectedFilePaths([]);
         setSelectedFilePath("");
       }
     }
-    // setLastSelectedFilePaths(lastSelectedFilteredPaths);
   };
 
   const handleTabClick = (
@@ -217,7 +63,6 @@ const FileTabBar = () => {
       removeTab(path);
     } else {
       if (selectedFilePath === path) return;
-      console.log("setting selected file path ->", path);
       setSelectedFilePath(path);
     }
   };
@@ -231,14 +76,9 @@ const FileTabBar = () => {
     e.preventDefault();
     const path = e.dataTransfer.getData("text/plain");
     if (fileTabs.includes(path)) {
-      console.log("setting selected file path ->", path);
       setSelectedFilePath(path);
     } else {
-      console.log(
-        `👹👹 In handleDrop, setting file tabs to -> ${[...fileTabs, path]}`
-      );
       setFileTabs([...fileTabs, path]);
-      console.log("setting selected file path ->", path);
       setSelectedFilePath(path);
     }
   };

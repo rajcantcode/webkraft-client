@@ -28,7 +28,6 @@ export const verifyUser = async () => {
     });
     if (data && data.email && data.username) {
       const setUserData = useUserStore.getState().setUserData;
-      console.log("setting user data to - ", data.email, data.username);
       setUserData(data.email, data.username);
       return data as Data;
     }

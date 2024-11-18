@@ -36,10 +36,8 @@ type WorkspaceStore = {
   fileStructure: [TreeNode] | null;
   selectedFilePath: string;
   filesContent: FileContentObj;
-  // fileTabs: string[];
-  // lastSelectedFilePaths: string[];
-  renamedPaths: RenamePathObj[];
-  deletedPaths: string[];
+  fileTabs: string[];
+  lastSelectedFilePaths: string[];
   setWorkspaceData: (
     name: string,
     link: string,
@@ -52,8 +50,10 @@ type WorkspaceStore = {
   setFilesContent: (
     filesContent: FileContentObj | ((prev: FileContentObj) => FileContentObj)
   ) => void;
-  setRenamedPaths: (renamedPaths: RenamePathObj[]) => void;
-  setDeletedPaths: (deletedPaths: string[]) => void;
+  setFileTabs: (fileTabs: string[]) => void;
+  setLastSelectedFilePaths: (
+    lastSelectedFilePaths: string[] | ((prev: string[]) => string[])
+  ) => void;
   clearWorkspaceData: () => void;
 };
 
@@ -63,37 +63,8 @@ export const useUserStore = create<UserStore>((set) => ({
   setUserData: (email, username) => set({ email, username }),
 }));
 
-// export const useWorkspaceStore = create<WorkspaceStore>(
-//   // @ts-ignore
-//   zukeeper((set) => ({
-//     name: "",
-//     link: "",
-//     baseLink: "",
-//     policy: "",
-//     fileStructure: null,
-//     selectedFilePath: "",
-//     filesContent: {},
-//     setWorkspaceData: (name, link, baseLink, policy, fileStructure) =>
-//       set({ name, link, baseLink, policy, fileStructure }),
-//     setSelectedFilePath: (path) => set({ selectedFilePath: path }),
-//     setFilesContent: (filesContent: FileContentObj) => set({ filesContent }),
-//     clearWorkspaceData: () => {
-//       set({
-//         name: "",
-//         link: "",
-//         baseLink: "",
-//         policy: "",
-//         fileStructure: null,
-//         selectedFilePath: "",
-//         filesContent: {},
-//       });
-//     },
-//   }))
-// );
-// @ts-ignore
-// window.store = useWorkspaceStore;
-
 export const useWorkspaceStore = create<WorkspaceStore>(
+  // @ts-ignore
   devtools(
     (set) => ({
       name: "",
@@ -103,10 +74,8 @@ export const useWorkspaceStore = create<WorkspaceStore>(
       fileStructure: null,
       selectedFilePath: "",
       filesContent: {},
-      // fileTabs: [],
-      // lastSelectedFilePaths: [],
-      renamedPaths: [],
-      deletedPaths: [],
+      fileTabs: [],
+      lastSelectedFilePaths: [],
       setWorkspaceData: (name, link, baseLink, policy, fileStructure) =>
         set(
           { name, link, baseLink, policy, fileStructure },
@@ -117,7 +86,6 @@ export const useWorkspaceStore = create<WorkspaceStore>(
         set({ fileStructure }, undefined, "setFileStructure"),
       setSelectedFilePath: (path) =>
         set({ selectedFilePath: path }, undefined, "setSelectedFilePath"),
-      // setFilesContent: (filesContent: FileContentObj) => set({ filesContent }),
       setFilesContent: (filesContent) => {
         set(
           (state) => ({
@@ -130,10 +98,19 @@ export const useWorkspaceStore = create<WorkspaceStore>(
           "setFilesContent"
         );
       },
-      setRenamedPaths: (renamedPaths) =>
-        set({ renamedPaths }, undefined, "setRenamedPaths"),
-      setDeletedPaths: (deletedPaths) =>
-        set({ deletedPaths }, undefined, "setDeletedPaths"),
+      setFileTabs: (fileTabs) => set({ fileTabs }, undefined, "setFileTabs"),
+      setLastSelectedFilePaths: (lastSelectedFilePaths) => {
+        set(
+          (state) => ({
+            lastSelectedFilePaths:
+              typeof lastSelectedFilePaths === "function"
+                ? lastSelectedFilePaths(state.lastSelectedFilePaths)
+                : lastSelectedFilePaths,
+          }),
+          undefined,
+          "setLastSelectedFilePaths"
+        );
+      },
       clearWorkspaceData: () => {
         set(
           {
@@ -144,8 +121,8 @@ export const useWorkspaceStore = create<WorkspaceStore>(
             fileStructure: null,
             selectedFilePath: "",
             filesContent: {},
-            renamedPaths: [],
-            deletedPaths: [],
+            fileTabs: [],
+            lastSelectedFilePaths: [],
           },
           undefined,
           "clearWorkspaceData"

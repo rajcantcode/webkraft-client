@@ -64,19 +64,12 @@ const Editor = ({
   const dmpRef = useRef(new DiffMatchPatch());
 
   const handleFileEdit = (value: string | undefined) => {
-    console.log("handleFileEdit called with value -> ", value);
     if (!value) return;
-    console.log("selectedFilePath -> ", selectedFilePath);
-    console.log(filesContent[selectedFilePath]);
     const dmp = dmpRef.current;
     const prevValue = filesContent[selectedFilePath].content;
     const diffs = dmp.diff_main(prevValue, value);
     dmp.diff_cleanupSemantic(diffs);
     const patch = dmp.patch_toText(dmp.patch_make(prevValue, diffs));
-    // const newFilesContent: FileContentObj = {
-    //   ...filesContent,
-    //   [selectedFilePath]: { ...filesContent[selectedFilePath], content: value },
-    // };
     setFilesContent((prev) => ({
       ...prev,
       [selectedFilePath]: { ...prev[selectedFilePath], content: value },
@@ -87,13 +80,6 @@ const Editor = ({
       { path: selectedFilePath, patch },
       (error: Error | null, data: { success: boolean; path: string }) => {
         if (error) {
-          // const oldFilesContent: FileContentObj = {
-          //   ...filesContent,
-          //   [selectedFilePath]: {
-          //     ...filesContent[selectedFilePath],
-          //     content: prevValue,
-          //   },
-          // };
           setFilesContent((prev) => ({
             ...prev,
             [selectedFilePath]: {

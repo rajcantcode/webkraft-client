@@ -67,17 +67,17 @@ const Workspace = () => {
 
   // Doing it this way beacause I don't want the state updates of fileStructure in this component. Just need the data once.
   const { fileStructure } = useWorkspaceStore.getState();
-  useLifecycles(
-    () => {
-      console.log("MOUNTED THIS COMPONENT!");
-      console.log("workspaceLink at the top - ", workspaceLink);
-      console.log(
-        "workspaceLink at the top from store directly - ",
-        useWorkspaceStore.getState().link
-      );
-    },
-    () => console.log("UNMOUNTED THIS COMPONENT!")
-  );
+  // useLifecycles(
+  //   () => {
+  //     console.log("MOUNTED THIS COMPONENT!");
+  //     console.log("workspaceLink at the top - ", workspaceLink);
+  //     console.log(
+  //       "workspaceLink at the top from store directly - ",
+  //       useWorkspaceStore.getState().link
+  //     );
+  //   },
+  //   () => console.log("UNMOUNTED THIS COMPONENT!")
+  // );
   const { username: creator, workspacename: pathWorkspaceName } = useParams();
 
   const fileFetchStatus = useRef<{ [key: string]: boolean }>({});
@@ -99,7 +99,6 @@ const Workspace = () => {
     mutationFn: loadWorkspace,
     onSuccess: async (data) => {
       if (!data) return;
-      console.log("In onSuccess of loadWorkspaceRequest");
       // const { link: workspaceLink } = useWorkspaceStore.getState();
       let workspaceLinkCopy: string;
       let fileTreeCopy: TreeNode;
@@ -107,9 +106,6 @@ const Workspace = () => {
       let policyCopy: string;
       const socketLink = data.socketLink;
       if (!workspaceLink) {
-        console.log("No workspace link - ", workspaceLink);
-        console.log("data.workspaceLink - ", data.workspaceLink);
-        console.log(data);
         const linkSplit = data.workspaceLink!.split("?");
         baseLinkCopy = linkSplit[0]
           .slice(0, -2)
@@ -128,16 +124,12 @@ const Workspace = () => {
         setSocketLink(socketLink);
         // fileTreeCopy = data.fileTree;
       } else {
-        console.log("Yes workspace link - ", workspaceLink);
         workspaceLinkCopy = workspaceLink;
         // fileTreeCopy = fileStructure![0]!;
         baseLinkCopy = baseLink;
         policyCopy = policy;
         setSocketLink(socketLink);
       }
-      console.log("baseWorkspaceLink", baseLinkCopy);
-      console.log("workspaceLinkPolicy", policyCopy);
-      console.log(workspaceLinkCopy);
       if (!data.isCreator) {
         // ToDo -> Show only the file structure and editor. No console. No editing of files.
         // Give option to fork the workspace.
@@ -173,9 +165,6 @@ const Workspace = () => {
     if (!socket) return;
 
     const handleReady = async (data: { fileStructure: TreeNode }) => {
-      console.log(
-        "🏃‍♂️‍➡️🏃‍♂️‍➡️🏃‍♂️‍➡️🏃‍♂️‍➡️🏃‍♂️‍➡️🏃‍♂️‍➡️🏃‍♂️‍➡️ ready event received 🏃‍♂️‍➡️🏃‍♂️‍➡️🏃‍♂️‍➡️🏃‍♂️‍➡️🏃‍♂️‍➡️🏃‍♂️‍➡️🏃‍♂️‍➡️🏃‍♂️‍➡️"
-      );
       setFileStructure([data.fileStructure]);
       setFileStructureReceived(true);
       await loadFilesOfFolder(
@@ -201,7 +190,6 @@ const Workspace = () => {
   });
 
   useEffect(() => {
-    console.log("*********** username, email useEffect triggered ***********");
     if (!username || !email) {
       return;
     }
@@ -209,15 +197,7 @@ const Workspace = () => {
     const signal = controller.signal;
     const { link: workspaceLink, name: workspaceName } =
       useWorkspaceStore.getState();
-    console.log("workspaceLink value in useEffect - ", workspaceLink);
-    console.log(
-      "workspaceLink value from useWorkspaceStore - ",
-      useWorkspaceStore.getState().link
-    );
     if (!workspaceLink) {
-      console.log(
-        "making request to load workspace when workspaceLink is not present"
-      );
       loadWorkspaceRequest({
         signal,
         creator: creator!,
@@ -226,9 +206,6 @@ const Workspace = () => {
     }
 
     if (workspaceLink) {
-      console.log(
-        "making request to load workspace when workspaceLink is present"
-      );
       loadWorkspaceRequest({
         signal,
         creator: creator!,
@@ -237,7 +214,6 @@ const Workspace = () => {
       });
     }
     return () => {
-      console.log("cleanup function called");
       stopWorkspaceRequest(useWorkspaceStore.getState().name);
       controller.abort();
       // stopWorkspaceRequest(workspaceName);

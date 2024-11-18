@@ -18,8 +18,10 @@ import {
   addChildrenPathsToDeleteArr,
   checkIfNameIsUnique,
   checkIfNameIsValid,
+  deleteFilePathsInFileTabBar,
   deletePathsFromFilesContentObj,
   findNode,
+  updateFilePathsInFileTabBar,
   updatePath,
 } from "../lib/utils.js";
 import { ScrollArea } from "./ui/ScrollArea.js";
@@ -296,12 +298,6 @@ const FileTree = ({
   const fileTree = useWorkspaceStore((state) => state.fileStructure);
   const setFileTree = useWorkspaceStore((state) => state.setFileStructure);
   const setFilesContent = useWorkspaceStore((state) => state.setFilesContent);
-  const setDeletedPaths = useWorkspaceStore((state) => state.setDeletedPaths);
-  const setRenamedPaths = useWorkspaceStore((state) => state.setRenamedPaths);
-  // if (!fileTree) {
-  //   return null;
-  // }
-  // const [fileTree, setFileTree] = useState<TreeNode[]>([fileStructure]);
 
   const checkRenameNodeIsUnique = useCallback(
     (node: TreeNode, renameValue: string) => {
@@ -313,7 +309,6 @@ const FileTree = ({
   const handleRename = useCallback(
     (node: TreeNode, newName: string, type: "file" | "folder") => {
       if (!fileTree) {
-        console.log("fileTree is null");
         return;
       }
       const parentPath = node.path.split("/").slice(0, -1).join("/");
@@ -334,23 +329,18 @@ const FileTree = ({
       node.path = parentPath + "/" + newName;
 
       if (node.type === "file") {
-        console.log("setting renamed paths");
-        setRenamedPaths([{ oldPath, newPath: node.path }]);
         setFilesContent((prev) => {
           const newFilesContent = { ...prev, [node.path]: prev[oldPath] };
           delete newFilesContent[oldPath];
           return newFilesContent;
         });
-        const { selectedFilePath } = useWorkspaceStore.getState();
-        if (selectedFilePath === oldPath) {
-          useWorkspaceStore.getState().setSelectedFilePath(node.path);
-        }
+        updateFilePathsInFileTabBar({ oldPath, newPath: node.path }, undefined);
       }
       if (node.type === "folder") {
         const renamedPaths: RenamePathObj[] = [];
         const { filesContent } = useWorkspaceStore.getState();
         updatePath(node, node.path, renamedPaths, filesContent);
-        setRenamedPaths(renamedPaths);
+        updateFilePathsInFileTabBar(undefined, renamedPaths);
         setFilesContent({ ...filesContent });
       }
       const fileTreeCopy = structuredClone(fileTree);
@@ -367,17 +357,12 @@ const FileTree = ({
           if (error) {
             // Revert the changes
             if (node.type === "file") {
-              setRenamedPaths([{ oldPath, newPath }]);
               setFilesContent((prev) => {
                 const newFilesContent = { ...prev, [oldPath]: prev[newPath] };
                 delete newFilesContent[newPath];
                 return newFilesContent;
               });
-              const selectedFilePath =
-                useWorkspaceStore.getState().selectedFilePath;
-              if (selectedFilePath === newPath) {
-                useWorkspaceStore.getState().setSelectedFilePath(oldPath);
-              }
+              updateFilePathsInFileTabBar({ oldPath, newPath }, undefined);
             }
             node.name = oldPath.split("/").pop()!;
             node.path = oldPath;
@@ -385,8 +370,9 @@ const FileTree = ({
               const renamedPaths: RenamePathObj[] = [];
               const { filesContent } = useWorkspaceStore.getState();
               updatePath(node, node.path, renamedPaths, filesContent);
-              setRenamedPaths(renamedPaths);
+              // setRenamedPaths(renamedPaths);
               setFilesContent({ ...filesContent });
+              updateFilePathsInFileTabBar(undefined, renamedPaths);
             }
             const fileTreeCopy = structuredClone(fileTree);
             setFileTree(fileTreeCopy);
@@ -403,7 +389,6 @@ const FileTree = ({
   const handleDelete = useCallback(
     (path: string, type: "file" | "folder") => {
       if (!fileTree) {
-        console.log("fileTree is null");
         return;
       }
       const fileTreeCopy = structuredClone(fileTree);
@@ -418,13 +403,14 @@ const FileTree = ({
       let deletedFileContent: FileContentObj = {};
       // Set deleted paths so they can be removed from the file tabs
       if (nodeToBeDeleted?.type === "file") {
-        setDeletedPaths([path]);
+        // setDeletedPaths([path]);
         deletedFileContent[path] = filesContent[path];
         setFilesContent((prev) => {
           const newFilesContent = { ...prev };
           delete newFilesContent[path];
           return newFilesContent;
         });
+        deleteFilePathsInFileTabBar(path, undefined);
       } else {
         // Recursively add all the children paths to the deletedPaths array
         // Delete all the paths of children which are files, from the filesContent object
@@ -435,8 +421,9 @@ const FileTree = ({
           filesContent,
           deletedFileContent
         );
-        setDeletedPaths(deletedPaths);
+        // setDeletedPaths(deletedPaths);
         setFilesContent({ ...filesContent });
+        deleteFilePathsInFileTabBar(undefined, deletedPaths);
       }
 
       // filter out the node to be deleted
@@ -444,33 +431,30 @@ const FileTree = ({
         (node) => node.path !== path
       );
 
-      //
-      // const { filesContent } = useWorkspaceStore.getState();
-      // const deletedFileContent = filesContent[path];
       setFileTree(fileTreeCopy);
-      // setFilesContent((prev) => {
-      //   const newFilesContent = { ...prev };
-      //   delete newFilesContent[path];
-      //   return newFilesContent;
-      // });
 
       const action = type === "file" ? "file:delete" : "folder:delete";
-      socket?.emit(action, { path }, (error: Error | null) => {
-        if (error) {
-          // Revert the changes
-          parentNode.children.push(nodeToBeDeleted!);
-          // ToDo -> Sort the children array
-          sortNodeChildren(parentNode);
-          const fileTreeCopy = structuredClone(fileTree);
-          setFileTree(fileTreeCopy);
-          setFilesContent((prev) => ({
-            ...prev,
-            ...deletedFileContent,
-          }));
-          console.error("Error deleting file/folder", error);
-          // ToDo -> Display a toast message
+      socket?.emit(
+        action,
+        { path },
+        (error: Error | null, data: { success: boolean; path: string }) => {
+          if (error) {
+            // Revert the changes
+            parentNode.children.push(nodeToBeDeleted!);
+            // ToDo -> Sort the children array
+            sortNodeChildren(parentNode);
+            const fileTreeCopy = structuredClone(fileTree);
+            setFileTree(fileTreeCopy);
+            setFilesContent((prev) => ({
+              ...prev,
+              ...deletedFileContent,
+            }));
+            console.error("Error deleting file/folder", error);
+
+            // ToDo -> Display a toast message
+          }
         }
-      });
+      );
     },
     [fileTree]
   );
@@ -478,7 +462,6 @@ const FileTree = ({
   const handleAddFile = useCallback(
     (node: TreeNode, fileName: string) => {
       if (!fileTree) {
-        console.log("fileTree is null");
         return;
       }
       if (node.type === "file") throw new Error("Not a folder");
@@ -539,7 +522,6 @@ const FileTree = ({
   const handleAddFolder = useCallback(
     (node: TreeNode, folderName: string) => {
       if (!fileTree) {
-        console.log("fileTree is null");
         return;
       }
       if (node.type === "file") {
@@ -591,7 +573,6 @@ const FileTree = ({
     if (!socket) return;
     const handleFileAdd = (data: { path: string }) => {
       if (!fileTree) {
-        console.log("fileTree is null");
         return;
       }
       const { path } = data;
@@ -619,7 +600,6 @@ const FileTree = ({
 
     const handleFileUnlink = (data: { path: string }) => {
       if (!fileTree) {
-        console.log("fileTree is null");
         return;
       }
       const { path } = data;
@@ -635,7 +615,6 @@ const FileTree = ({
 
     const handleFolderAdd = (data: { path: string }) => {
       if (!fileTree) {
-        console.log("fileTree is null");
         return;
       }
       const { path } = data;
@@ -656,7 +635,6 @@ const FileTree = ({
 
     const handleFolderUnlink = (data: { path: string }) => {
       if (!fileTree) {
-        console.log("fileTree is null");
         return;
       }
       const { path } = data;

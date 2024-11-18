@@ -112,7 +112,6 @@ const TemplateSearchModal = () => {
       return data as CreateWorkspaceResponse;
     },
     onSuccess: (data) => {
-      console.log(data);
       const linkSplit = data.workspaceLink!.split("?");
       const baseLinkCopy = linkSplit[0]
         .slice(0, -2)
@@ -155,7 +154,6 @@ const TemplateSearchModal = () => {
 
   const createWorkspace = () => {
     if (!selectedTemplate?.value) {
-      console.log("Please select a template");
       return;
     }
     const body = {

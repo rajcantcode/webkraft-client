@@ -40,7 +40,6 @@ const Home = () => {
   };
 
   if (verificationPending) {
-    console.log(verificationPending);
     return <div>Verifying user, please wait</div>;
   }
 

@@ -69,7 +69,8 @@ import {
   type IconPackValue,
   generateManifest,
 } from "material-icon-theme";
-import { TreeNode } from "../constants";
+import { FileContentObj, TreeNode } from "../constants";
+import { RenamePathObj, useWorkspaceStore } from "../store";
 export const cn = (...inputs: ClassValue[]) => {
   return twMerge(clsx(inputs));
 };
@@ -245,7 +246,12 @@ export const findNode = (nodes: TreeNode[], path: string): TreeNode | null => {
 
 // console.log(findNode(tree, "client/src/components"));
 
-export const updatePath = (node: TreeNode, newPath: string) => {
+export const updatePath = (
+  node: TreeNode,
+  newPath: string,
+  renamedPaths: RenamePathObj[],
+  filesContent: FileContentObj
+) => {
   if (node.type === "file" || (node.type === "folder" && !node.children)) {
     node.path = newPath;
     return;
@@ -253,10 +259,14 @@ export const updatePath = (node: TreeNode, newPath: string) => {
   // @ts-ignore
   node.children.forEach((child) => {
     if (child.type === "file") {
-      child.path = newPath + "/" + child.name;
+      const newFilePath = newPath + "/" + child.name;
+      renamedPaths.push({ oldPath: child.path, newPath: newFilePath });
+      filesContent[newFilePath] = filesContent[child.path];
+      delete filesContent[child.path];
+      child.path = newFilePath;
     } else {
       child.path = newPath + "/" + child.name;
-      updatePath(child, child.path);
+      updatePath(child, child.path, renamedPaths, filesContent);
     }
   });
 };
@@ -295,6 +305,90 @@ export const checkIfNameIsUnique = (node: TreeNode, name: string) => {
 
   return nodeExists ? false : true;
 };
+
+export const addChildrenPathsToDeleteArr = (
+  node: TreeNode,
+  arr: string[],
+  filesContent: FileContentObj,
+  deletedFileContent: FileContentObj
+) => {
+  if (node.type === "file") {
+    return;
+  }
+  node.children.forEach((child) => {
+    if (child.type === "file") {
+      arr.push(child.path);
+      deletedFileContent[child.path] = filesContent[child.path];
+      delete filesContent[child.path];
+    } else {
+      if (child.children.length > 0) {
+        addChildrenPathsToDeleteArr(
+          child,
+          arr,
+          filesContent,
+          deletedFileContent
+        );
+      }
+    }
+  });
+};
+
+export const addChildrenPathsToRenameArr = () => {};
+
+export const deletePathsFromFilesContentObj = (
+  node: TreeNode,
+  filesContent: FileContentObj
+) => {
+  if (node.type === "file") {
+    return;
+  }
+  node.children.forEach((child) => {
+    if (child.type === "file") {
+      delete filesContent[child.path];
+    } else {
+      if (child.children.length > 0) {
+        deletePathsFromFilesContentObj(child, filesContent);
+      }
+    }
+  });
+};
+
+// export const removeTab = (path: string) => {
+//   console.log("removeTab called");
+//   const {
+//     fileTabs,
+//     lastSelectedFilePaths,
+//     selectedFilePath,
+//     setFileTabs,
+//     setSelectedFilePath,
+//     setLastSelectedFilePaths,
+//   } = useWorkspaceStore.getState();
+//   const newTabs = fileTabs.filter((tab) => tab !== path);
+//   // lastSelectedFilePaths.current = lastSelectedFilePaths.current.filter(
+//   //   (prevPath) => prevPath !== path
+//   // );
+//   // setLastSelectedFilePaths((prev) =>
+//   //   prev.filter((prevPath) => prevPath !== path)
+//   // );
+
+//   // Remove path from lastSelectedFilePaths which has been closed
+//   let lastSelectedFilteredPaths = lastSelectedFilePaths.filter(
+//     (prevPath) => prevPath !== path
+//   );
+//   setFileTabs(newTabs);
+//   if (path === selectedFilePath) {
+//     if (newTabs.length > 0) {
+//       // setSelectedFilePath(lastSelectedFilePaths.current.pop() || "");
+//       setSelectedFilePath(lastSelectedFilteredPaths.pop() || "");
+//     } else {
+//       // lastSelectedFilePaths.current = [];
+//       lastSelectedFilteredPaths = [];
+//       setSelectedFilePath("");
+//     }
+//   }
+//   setLastSelectedFilePaths(lastSelectedFilteredPaths);
+// };
+
 // const config: ManifestConfig = {
 //   activeIconPack: "angular",
 //   hidesExplorerArrows: true,

@@ -27,7 +27,7 @@ interface CreateWorkspaceParams {
 interface CreateWorkspaceResponse {
   workspaceName: string;
   workspaceLink: string;
-  fileTree: TreeNode;
+  // fileTree: TreeNode;
 }
 
 const Templates: SelectedTemplate[] = [
@@ -113,7 +113,21 @@ const TemplateSearchModal = () => {
     },
     onSuccess: (data) => {
       console.log(data);
-      setWorkspaceData(data.workspaceName, data.workspaceLink, data.fileTree);
+      const linkSplit = data.workspaceLink!.split("?");
+      const baseLinkCopy = linkSplit[0]
+        .slice(0, -2)
+        .split("/")
+        .slice(0, -2)
+        .join("/");
+      const policyCopy = linkSplit[1];
+      setWorkspaceData(
+        data.workspaceName,
+        data.workspaceLink,
+        baseLinkCopy,
+        policyCopy,
+        null
+        // [data.fileTree]
+      );
       navigate(`/workspace/${username}/${data.workspaceName}`);
       // Redirect user to /:username/:workspaceName
       // When user creates a new workspace, we can use the public spaces link to fetch files.
@@ -140,20 +154,15 @@ const TemplateSearchModal = () => {
   };
 
   const createWorkspace = () => {
-    console.log("Creating workspace...");
     if (!selectedTemplate?.value) {
       console.log("Please select a template");
       return;
     }
-    console.log(selectedTemplate?.value);
-    console.log(workspaceName);
-    console.log(isPublic);
     const body = {
       type: selectedTemplate.value,
       workspaceName,
       visibility: isPublic ? "public" : ("private" as "public" | "private"),
     };
-    console.log(body);
     createWorkspaceRequest({ baseUrl, body });
   };
 

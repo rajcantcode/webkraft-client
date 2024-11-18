@@ -1,4 +1,4 @@
-import { RefObject } from "react";
+import React, { RefObject } from "react";
 import { RiDeleteBin6Line } from "react-icons/ri";
 import { RxCross2 } from "react-icons/rx";
 
@@ -7,7 +7,7 @@ interface DeleteConfirmationModalProps {
   name: string;
   modalRef: RefObject<HTMLDialogElement>;
   path: string;
-  handleDelete: (path: string) => void;
+  handleDelete: (path: string, type: "file" | "folder") => void;
 }
 const DeleteConfirmationModal = ({
   type,
@@ -16,7 +16,8 @@ const DeleteConfirmationModal = ({
   path,
   handleDelete,
 }: DeleteConfirmationModalProps) => {
-  const closeModal = () => {
+  const closeModal = (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
+    e.stopPropagation();
     modalRef.current?.close();
   };
   return (
@@ -34,13 +35,13 @@ const DeleteConfirmationModal = ({
         </button>
         <button
           className="p-2 hover:bg-[#E52222] bg-[#A60808] cursor-pointer rounded-md flex items-center gap-2"
-          onClick={() => {
-            handleDelete(path);
-            closeModal();
+          onClick={(e) => {
+            handleDelete(path, type);
+            closeModal(e);
           }}
         >
           <RiDeleteBin6Line />
-          Yes, delete folder
+          Yes, delete {type}
         </button>
       </div>
       <button

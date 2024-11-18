@@ -8,8 +8,32 @@
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  font-family: "IBM Plex Sans", sans-serif, "system-ui";
+}
+/* .filetab {
+  scrollbar-width: none; 
 }
 
+.filetab::-webkit-scrollbar {
+  display: none; 
+}
+
+.filetab:hover {
+  scrollbar-width: thin; 
+}
+
+.filetab:hover::-webkit-scrollbar {
+  display: block; 
+}
+
+.filetab::-webkit-scrollbar {
+  height: 8px;
+}
+
+.filetab::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.5); 
+  border-radius: 4px; 
+}  */
 /* .folder-container .actions-container {
   opacity: 0;
   transition: opacity 0.3s ease-in-out;

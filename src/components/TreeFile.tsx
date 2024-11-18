@@ -5,9 +5,14 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Input } from "./ui/Input";
 import DeleteFileModal from "./DeleteConfirmationModal";
 import { IoMdSend } from "react-icons/io";
+import { useWorkspaceStore } from "../store";
 
-type HandleRename = (node: TreeNode, newName: string) => void;
-type HandleDelete = (path: string) => void;
+type HandleRename = (
+  node: TreeNode,
+  newName: string,
+  type: "file" | "folder"
+) => void;
+type HandleDelete = (path: string, type: "file" | "folder") => void;
 type CheckRenameValueIsUnique = (renameValue: string) => boolean;
 const TreeFile = ({
   node,
@@ -25,6 +30,10 @@ const TreeFile = ({
     value: "",
     error: "",
   });
+  const selectedFilePath = useWorkspaceStore((state) => state.selectedFilePath);
+  const setSelectedFilePath = useWorkspaceStore(
+    (state) => state.setSelectedFilePath
+  );
   const inputRef = useRef<HTMLInputElement>(null);
   const deleteFileModalRef = useRef<HTMLDialogElement>(null);
 
@@ -41,6 +50,8 @@ const TreeFile = ({
 
   const handleFileClick = useCallback(
     (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
+      console.log("file clicked ->", node);
+      console.log(e);
       e.stopPropagation();
       const actionSelected = (e.target as Element)
         .closest(".action-icon")
@@ -51,18 +62,30 @@ const TreeFile = ({
             setInputState({ show: true, value: node.name, error: "" });
             console.log("rename");
             return;
-          case "del-folder":
+          case "del-file":
             deleteFileModalRef.current?.showModal();
             console.log("delete");
             return;
         }
+      } else {
+        console.log("setting selected file path ->", node.path);
+        setSelectedFilePath(node.path);
       }
+    },
+    [node]
+  );
+
+  const handleDragStart = useCallback(
+    (e: React.DragEvent<HTMLDivElement>) => {
+      e.dataTransfer.setData("text/plain", node.path);
+      e.dataTransfer.effectAllowed = "copy";
     },
     [node]
   );
 
   const handleInputChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
+      e.stopPropagation();
       if (!checkRenameValueIsUnique(e.target.value)) {
         setInputState((prev) => ({
           ...prev,
@@ -85,10 +108,11 @@ const TreeFile = ({
   );
 
   const handleInputSubmit = (e?: React.FormEvent<HTMLFormElement>) => {
+    // debugger;
     e?.preventDefault();
     console.log(e?.currentTarget);
     try {
-      handleRename(node, inputState.value);
+      handleRename(node, inputState.value, node.type);
       setInputState({ show: false, value: "", error: "" });
     } catch (error) {
       // If we don't have e that means user has clicked outside the input, which invoked handleInputSubmit, but we don't want to show error in that case, and also hide the input
@@ -104,11 +128,20 @@ const TreeFile = ({
 
   return (
     <div
-      className={`py-2 pr-1 flex items-center w-full file-details group justify-between`}
+      className={`py-[1px] px-1 flex items-center w-[99%] file-details group justify-between min-h-[32px] sm:min-h-[24px] text-sm mt-1.5 ${
+        selectedFilePath === node.path ? "bg-[#2B3245]" : ""
+      } rounded-md hover:bg-[#1C2333] focus:shadow-[0_0_0_2px_#0079F2]`}
       onClick={handleFileClick}
+      tabIndex={0}
+      draggable={!inputState.show}
+      onDragStart={handleDragStart}
     >
       {inputState.show ? (
-        <form className="relative w-full" onSubmit={handleInputSubmit}>
+        <form
+          className="relative w-full bg-transparent"
+          onSubmit={handleInputSubmit}
+          onClick={(e) => e.stopPropagation()}
+        >
           <div className="flex items-center w-full gap-2">
             <Input
               type="text"
@@ -142,7 +175,7 @@ const TreeFile = ({
               className="transition-transform hover:scale-[1.1] scale-100 action-icon"
             />
             <AiOutlineDelete
-              data-action="del-folder"
+              data-action="del-file"
               className="transition-transform hover:scale-[1.1] scale-100 action-icon"
             />
           </div>

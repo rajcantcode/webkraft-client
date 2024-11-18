@@ -5,7 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 
 const Welcome = () => {
   const navigate = useNavigate();
-  const { data, isLoading, error, status } = useQuery({
+  const { isLoading, error, status } = useQuery({
     queryKey: ["auth"],
     queryFn: verifyUser,
     refetchOnMount: true,

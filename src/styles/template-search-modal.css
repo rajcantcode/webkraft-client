@@ -1,12 +1,10 @@
 /* Hide scrollbar for Chrome, Safari, and Opera */
-.templates-container::-webkit-scrollbar,
-.tree-container::-webkit-scrollbar {
+.templates-container::-webkit-scrollbar {
   display: none;
 }
 
 /* Hide scrollbar for IE, Edge, and Firefox */
-.templates-container,
-.tree-container {
+.templates-container {
   -ms-overflow-style: none;
   /* IE and Edge */
   scrollbar-width: none;

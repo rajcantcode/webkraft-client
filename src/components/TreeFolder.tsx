@@ -15,9 +15,14 @@ import {
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Input } from "./ui/Input";
 import DeleteFolderModal from "./DeleteConfirmationModal";
+import { loadFilesOfFolder, loadFilesOfNodeModulesFolder } from "../helpers";
 
-type HandleRename = (node: TreeNode, newName: string) => void;
-type HandleDelete = (path: string) => void;
+type HandleRename = (
+  node: TreeNode,
+  newName: string,
+  type: "file" | "folder"
+) => void;
+type HandleDelete = (path: string, type: "file" | "folder") => void;
 type HandleAddFile = (node: TreeNode, fileName: string) => void;
 type HandleAddFolder = (node: TreeNode, folderName: string) => void;
 type CheckRenameValueIsUnique = (renameValue: string) => boolean;
@@ -37,6 +42,8 @@ const TreeFolder = ({
   handleAddFile,
   handleAddFolder,
   checkRenameValueIsUnique,
+  fileFetchStatus,
+  socketLink,
 }: {
   node: TreeNode;
   padLeft: Number;
@@ -46,6 +53,8 @@ const TreeFolder = ({
   handleAddFile: HandleAddFile;
   handleAddFolder: HandleAddFolder;
   checkRenameValueIsUnique: CheckRenameValueIsUnique;
+  fileFetchStatus: { [key: string]: boolean };
+  socketLink: string;
 }) => {
   const [isOpen, setIsOpen] = useState(open);
   const [inputState, setInputState] = useState<InputState>({
@@ -129,6 +138,13 @@ const TreeFolder = ({
       }
     } else {
       if (inputState.show) return;
+      if (!isOpen && node.children.length > 0) {
+        if (node.path.includes("node_modules")) {
+          loadFilesOfNodeModulesFolder(node, fileFetchStatus, socketLink);
+        } else {
+          loadFilesOfFolder(node, fileFetchStatus);
+        }
+      }
       setIsOpen(!isOpen);
       console.log("User wants to open/close folder");
       return;
@@ -136,6 +152,7 @@ const TreeFolder = ({
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    e.stopPropagation();
     const isNameValid = checkIfNameIsValid(e.target.value);
     if (!isNameValid) {
       setInputState((prev) => ({
@@ -178,10 +195,11 @@ const TreeFolder = ({
       value: string,
       e?: React.FormEvent<HTMLFormElement>
     ) => {
+      e?.stopPropagation();
       e?.preventDefault();
       try {
         if (operation === "rename") {
-          handleRename(node, value);
+          handleRename(node, value, node.type);
         }
         if (operation === "add-file") {
           handleAddFile(node, value);
@@ -219,8 +237,9 @@ const TreeFolder = ({
   return (
     <div className="w-full folder-container">
       <div
-        className="flex items-center justify-between w-full py-2 pr-1 folder-details group"
+        className="flex items-center justify-between py-[1px] pr-1 folder-details group min-h-[32px] sm:min-h-[24px] text-sm hover:bg-[#1C2333] focus:bg-[#1C2333] focus:shadow-[0_0_0_2px_#0079F2] rounded-md px-1 w-[99%] mt-1.5"
         onClick={handleFolderClick}
+        tabIndex={0}
       >
         {inputState.show && inputState.operation === "rename" ? (
           <form
@@ -278,12 +297,12 @@ const TreeFolder = ({
       </div>
       {node.children && node.children.length > 0 && (
         <div
-          className={`children border-l border-black overflow-y-hidden overflow-x-hidden`}
+          className={`children border-l border-[#2A3244] overflow-y-hidden overflow-x-hidden`}
           style={{
             paddingLeft: `${padLeft}px`,
-            maxHeight: isOpen ? "1000px" : "0px",
-            transition: "max-height 0.75s",
-            scrollbarWidth: "none",
+            paddingBottom: isOpen ? "5px" : "0px",
+            maxHeight: isOpen ? "10000px" : "0px",
+            transition: "max-height 0.75s ease",
           }}
         >
           {node.children.map((child) => {
@@ -299,6 +318,8 @@ const TreeFolder = ({
                   handleAddFile={handleAddFile}
                   handleAddFolder={handleAddFolder}
                   checkRenameValueIsUnique={checkRenameNodeIsUnique}
+                  fileFetchStatus={fileFetchStatus}
+                  socketLink={socketLink}
                 />
               );
             }

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Console from "../components/Console";
 import Editor from "../components/Editor";
 import FileTree from "../components/FileTree";
@@ -14,6 +14,7 @@ import {
   stopWorkspace,
   verifyUser,
 } from "../helpers";
+import debounce from "lodash.debounce";
 import { useLifecycles } from "react-use";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useParams } from "react-router-dom";
@@ -57,6 +58,7 @@ const Workspace = () => {
   );
   const setFileStructure = useWorkspaceStore((state) => state.setFileStructure);
   const [fileStructureReceived, setFileStructureReceived] = useState(false);
+  const [consoleSize, setConsoleSize] = useState(25);
   // const socketRef = useRef<Socket | null>(null);
   const [socketLink, setSocketLink] = useState<string | null>(null);
   const socket = useSocketConnection(socketLink, {
@@ -90,6 +92,18 @@ const Workspace = () => {
     enabled: !username || !email,
     retry: false,
   });
+
+  const request = debounce((size: number) => {
+    console.log(`Console resized to -> ${size}`);
+    setConsoleSize(size);
+  }, 100);
+
+  const handleConsoleResize = useCallback(
+    (size: number) => {
+      request(size);
+    },
+    [setConsoleSize]
+  );
 
   const {
     mutate: loadWorkspaceRequest,
@@ -243,6 +257,7 @@ const Workspace = () => {
             minSize={15}
             maxSize={50}
             collapsible={true}
+            order={1}
           >
             <FileTree
               padLeft={8}
@@ -251,17 +266,21 @@ const Workspace = () => {
             />
           </ResizablePanel>
           <ResizableHandle withHandle={true} />
-          <ResizablePanel defaultSize={75}>
+          <ResizablePanel defaultSize={80} order={2}>
             <ResizablePanelGroup direction="vertical">
-              <ResizablePanel defaultSize={75}>
+              <ResizablePanel defaultSize={75} order={1}>
                 <Editor
                   fileFetchStatus={fileFetchStatus.current}
                   socket={socket}
                 />
               </ResizablePanel>
               <ResizableHandle withHandle={true} />
-              <ResizablePanel defaultSize={25}>
-                <Console />
+              <ResizablePanel
+                defaultSize={25}
+                order={2}
+                onResize={handleConsoleResize}
+              >
+                <Console socket={socket} size={consoleSize} />
               </ResizablePanel>
             </ResizablePanelGroup>
           </ResizablePanel>

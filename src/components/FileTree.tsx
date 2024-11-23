@@ -577,7 +577,8 @@ const FileTree = ({
       }
       const { path } = data;
       const parentPath = path.split("/").slice(0, -1).join("/");
-      const parentNode = findNode(fileTree, parentPath);
+      const fileTreeCopy = structuredClone(fileTree);
+      const parentNode = findNode(fileTreeCopy, parentPath);
       if (!parentNode || parentNode.type === "file") return;
       const fileName = path.split("/").pop();
       parentNode.children.push({
@@ -586,8 +587,18 @@ const FileTree = ({
         path,
       });
       sortNodeChildren(parentNode);
-      const fileTreeCopy = structuredClone(fileTree);
       setFileTree(fileTreeCopy);
+      const fileExtension = fileName!.split(".").pop();
+      setFilesContent((prev) => ({
+        ...prev,
+        [path]: {
+          name: fileName!,
+          content: "",
+          language: fileExtension
+            ? editorSupportedLanguages[fileExtension] || "text"
+            : "text",
+        },
+      }));
     };
 
     const handleFileChange = (data: { path: string; content: string }) => {
@@ -602,15 +613,21 @@ const FileTree = ({
       if (!fileTree) {
         return;
       }
+      const fileTreeCopy = structuredClone(fileTree);
       const { path } = data;
       const parentPath = path.split("/").slice(0, -1).join("/");
-      const parentNode = findNode(fileTree, parentPath);
+      const parentNode = findNode(fileTreeCopy, parentPath);
       if (!parentNode || parentNode.type === "file") return;
       parentNode.children = parentNode.children.filter(
         (node) => node.path !== path
       );
-      const fileTreeCopy = structuredClone(fileTree);
       setFileTree(fileTreeCopy);
+      setFilesContent((prev) => {
+        const newFilesContent = { ...prev };
+        delete newFilesContent[path];
+        return newFilesContent;
+      });
+      deleteFilePathsInFileTabBar(path, undefined);
     };
 
     const handleFolderAdd = (data: { path: string }) => {
@@ -619,7 +636,8 @@ const FileTree = ({
       }
       const { path } = data;
       const parentPath = path.split("/").slice(0, -1).join("/");
-      const parentNode = findNode(fileTree, parentPath);
+      const fileTreeCopy = structuredClone(fileTree);
+      const parentNode = findNode(fileTreeCopy, parentPath);
       if (!parentNode || parentNode.type === "file") return;
       const folderName = path.split("/").pop();
       parentNode.children.push({
@@ -629,7 +647,6 @@ const FileTree = ({
         children: [],
       });
       sortNodeChildren(parentNode);
-      const fileTreeCopy = structuredClone(fileTree);
       setFileTree(fileTreeCopy);
     };
 
@@ -639,13 +656,27 @@ const FileTree = ({
       }
       const { path } = data;
       const parentPath = path.split("/").slice(0, -1).join("/");
-      const parentNode = findNode(fileTree, parentPath);
+      const fileTreeCopy = structuredClone(fileTree);
+      const parentNode = findNode(fileTreeCopy, parentPath);
       if (!parentNode || parentNode.type === "file") return;
+      const nodeToBeDeleted = parentNode.children.find(
+        (node) => node.path === path
+      );
       parentNode.children = parentNode.children.filter(
         (node) => node.path !== path
       );
-      const fileTreeCopy = structuredClone(fileTree);
       setFileTree(fileTreeCopy);
+
+      const deletedPaths: string[] = [];
+      const filesContent = useWorkspaceStore.getState().filesContent;
+      addChildrenPathsToDeleteArr(
+        nodeToBeDeleted!,
+        deletedPaths,
+        filesContent,
+        null
+      );
+      setFilesContent({ ...filesContent });
+      deleteFilePathsInFileTabBar(undefined, deletedPaths);
     };
 
     socket.on("file:add", handleFileAdd);
@@ -660,7 +691,7 @@ const FileTree = ({
       socket.off("folder:add", handleFolderAdd);
       socket.off("folder:unlink", handleFolderUnlink);
     };
-  }, [socket, fileTree, setFileTree]);
+  }, [socket, fileTree, setFileTree, setFilesContent]);
 
   const handleRightClick = (e: React.MouseEvent<HTMLDivElement>) => {
     // e.stopPropagation();

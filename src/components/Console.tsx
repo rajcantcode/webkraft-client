@@ -3,28 +3,21 @@ import { FitAddon } from "@xterm/addon-fit";
 import "@xterm/xterm/css/xterm.css";
 import { useEffect, useRef } from "react";
 import { Socket } from "socket.io-client";
+import { useWorkspaceStore } from "../store";
+
 const Console = ({ socket, size }: { socket: Socket | null; size: number }) => {
   if (!socket) return null;
   const terminalRef = useRef<HTMLDivElement>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
 
   useEffect(() => {
-    // const terminal = new XTerminal({ convertEol: true });
     const terminal = new XTerminal({
-      // convertEol: true,
-      cursorBlink: true,
+      cursorBlink: false,
       cursorStyle: "block",
-      // rows: terminalRef.current?.clientHeight
-      //   ? Math.floor(terminalRef.current.clientHeight / 18)
-      //   : undefined,
-      // cols: terminalRef.current?.clientWidth
-      //   ? Math.floor(terminalRef.current.clientWidth / 9)
-      //   : undefined,
       theme: {
-        background: "#1e1e1e",
+        background: "#1B2333",
         foreground: "#d4d4d4",
-        cursor: "#ffffff",
-        // selection: "#264f78",
+        cursor: "#F5F9FC",
         black: "#000000",
         red: "#cd3131",
         green: "#0dbc79",
@@ -49,44 +42,32 @@ const Console = ({ socket, size }: { socket: Socket | null; size: number }) => {
       letterSpacing: 0,
       lineHeight: 1,
     });
+
     fitAddonRef.current = new FitAddon();
     const fitAddon = fitAddonRef.current;
-    // terminal.loadAddon(fitAddon);
+    terminal.loadAddon(fitAddon);
     terminal.open(terminalRef.current as HTMLDivElement);
-    // fitAddon.fit();
-    terminal.writeln("Hello from sandy.js");
-    let inputBuffer = "";
-    terminal.onData((data) => {
-      inputBuffer += data;
-      terminal.write(data);
-      // console.log(inputBuffer);
-    });
-    terminal.onKey((e) => {
-      console.log(e);
-      if (e.key === "\r") {
-        // terminal.writeln("\r\n");
-        // terminal.write("\r\n");
-        console.log(`Sending data to server -> ${inputBuffer}`);
-        socket.emit("term:write", inputBuffer);
-        inputBuffer = "";
-      }
-    });
+    fitAddon.fit();
+
+    terminal.write(
+      `\x1b[38;2;88;171;255m~/${useWorkspaceStore.getState().name}\x1b[0m$ `
+    );
+
+    terminal.onData((data) => socket.emit("term:write", data));
+
+    // Handle server output
     socket.on("term:out", (data: string) => {
-      // terminal.write("\x1b[G");
-      // terminal.write("\x1b[2K\x1b[G");
-      // terminal.write("\x1b[2K\r");
       terminal.write(data);
-      // terminal.write("\r\n");
     });
+
     return () => {
       terminal.dispose();
-      inputBuffer = "";
     };
   }, [socket]);
 
   useEffect(() => {
     if (fitAddonRef.current) {
-      // fitAddonRef.current.fit();
+      fitAddonRef.current.fit();
     }
   }, [size]);
 
@@ -94,5 +75,8 @@ const Console = ({ socket, size }: { socket: Socket | null; size: number }) => {
     <div className="h-full bg-purple-400" id="terminal" ref={terminalRef}></div>
   );
 };
+
+// on width change of the terminal, change number of colums
+// on height change of the terminal, change number of rows
 
 export default Console;

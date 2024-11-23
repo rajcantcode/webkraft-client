@@ -308,7 +308,7 @@ export const addChildrenPathsToDeleteArr = (
   node: TreeNode,
   arr: string[],
   filesContent: FileContentObj,
-  deletedFileContent: FileContentObj
+  deletedFileContent: FileContentObj | null
 ) => {
   if (node.type === "file") {
     return;
@@ -316,7 +316,9 @@ export const addChildrenPathsToDeleteArr = (
   node.children.forEach((child) => {
     if (child.type === "file") {
       arr.push(child.path);
-      deletedFileContent[child.path] = filesContent[child.path];
+      if (deletedFileContent) {
+        deletedFileContent[child.path] = filesContent[child.path];
+      }
       delete filesContent[child.path];
     } else {
       if (child.children.length > 0) {

@@ -165,8 +165,8 @@ const Editor = ({
     <div className="h-full bg-emerald-400">
       <FileTabBar />
       <MonacoEditor
-        defaultLanguage={filesContent[selectedFilePath].language}
-        defaultValue={filesContent[selectedFilePath].content}
+        language={filesContent[selectedFilePath].language}
+        value={filesContent[selectedFilePath].content}
         path={selectedFilePath}
         theme="vs-dark"
         onChange={debouncedFileEdit}

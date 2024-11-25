@@ -1,7 +1,7 @@
 import { Terminal as XTerminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import "@xterm/xterm/css/xterm.css";
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { Socket } from "socket.io-client";
 import { useWorkspaceStore } from "../store";
 
@@ -43,17 +43,23 @@ const Console = ({ socket, size }: { socket: Socket | null; size: number }) => {
       lineHeight: 1,
     });
 
-    fitAddonRef.current = new FitAddon();
-    const fitAddon = fitAddonRef.current;
-    terminal.loadAddon(fitAddon);
-    terminal.open(terminalRef.current as HTMLDivElement);
-    fitAddon.fit();
-
+    if (terminalRef.current) {
+      fitAddonRef.current = new FitAddon();
+      const fitAddon = fitAddonRef.current;
+      terminal.loadAddon(fitAddon);
+      terminal.open(terminalRef.current as HTMLDivElement);
+      fitAddon.fit();
+      socket.emit("term:resize", { cols: terminal.cols, rows: terminal.rows });
+      window.addEventListener("resize", fitTerminal);
+    }
     terminal.write(
       `\x1b[38;2;88;171;255m~/${useWorkspaceStore.getState().name}\x1b[0m$ `
     );
 
     terminal.onData((data) => socket.emit("term:write", data));
+    terminal.onResize(({ cols, rows }) => {
+      socket.emit("term:resize", { cols, rows });
+    });
 
     // Handle server output
     socket.on("term:out", (data: string) => {
@@ -62,17 +68,22 @@ const Console = ({ socket, size }: { socket: Socket | null; size: number }) => {
 
     return () => {
       terminal.dispose();
+      window.removeEventListener("resize", fitTerminal);
     };
   }, [socket]);
 
   useEffect(() => {
+    fitTerminal();
+  }, [size]);
+
+  const fitTerminal = useCallback(() => {
     if (fitAddonRef.current) {
       fitAddonRef.current.fit();
     }
-  }, [size]);
+  }, []);
 
   return (
-    <div className="h-full bg-purple-400" id="terminal" ref={terminalRef}></div>
+    <div className="h-full bg-[#1B2333]" id="terminal" ref={terminalRef}></div>
   );
 };
 

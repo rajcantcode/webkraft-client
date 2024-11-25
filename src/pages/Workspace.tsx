@@ -94,9 +94,8 @@ const Workspace = () => {
   });
 
   const request = debounce((size: number) => {
-    console.log(`Console resized to -> ${size}`);
     setConsoleSize(size);
-  }, 100);
+  }, 200);
 
   const handleConsoleResize = useCallback(
     (size: number) => {

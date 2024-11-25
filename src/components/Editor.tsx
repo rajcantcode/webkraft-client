@@ -105,32 +105,25 @@ const Editor = ({
     [selectedFilePath, setFilesContent, filesContent]
   );
 
-  // const handleEditorDidMount = (editor) => {
-  //   const editorDomNode = editor.getDomNode();
-  //   if (editorDomNode) {
-  //     editorDomNode.addEventListener("dragover", (e) => {
-  //       e.preventDefault();
-  //       e.dataTransfer.dropEffect = "copy";
-  //     });
+  const handleEditorDidMount = (editor, monaco, selectedFilePath: string) => {
+    monaco.editor.setTheme("grey-bg-vs-dark");
+    const editorDomNode = editor.getDomNode();
+    if (editorDomNode) {
+      editorDomNode.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = "copy";
+      });
 
-  //     editor.onDropIntoEditor(({ position, event }) => {
-  //       event.preventDefault();
-  //       event.stopPropagation();
-  //     });
-  //     editorDomNode.addEventListener(
-  //       "drop",
-  //       (e) => {
-  //         e.preventDefault();
-  //         e.stopPropagation();
-  //         const path = e.dataTransfer.getData("text/plain");
-  //         console.log("someone dropped -> ", path);
-  //         if (path === selectedFilePath) return;
-  //         setSelectedFilePath(path);
-  //       },
-  //       true
-  //     );
-  //   }
-  // };
+      editor.onDropIntoEditor(({ position, event }) => {
+        const path = event.dataTransfer.getData("text/plain");
+
+        event.preventDefault();
+        event.stopPropagation();
+        if (path === selectedFilePath) return;
+        setSelectedFilePath(path);
+      });
+    }
+  };
 
   if (selectedFilePath === "") {
     return <div className="h-full bg-emerald-400">Please select a file</div>;
@@ -175,7 +168,9 @@ const Editor = ({
         }}
         overrideServices={{}}
         className="h-[calc(100%-30px)]"
-        onMount={(editor, monaco) => monaco.editor.setTheme("grey-bg-vs-dark")}
+        onMount={(editor, monaco) =>
+          handleEditorDidMount(editor, monaco, selectedFilePath)
+        }
         beforeMount={(monaco) => {
           monaco.editor.defineTheme("grey-bg-vs-dark", {
             base: "vs-dark",

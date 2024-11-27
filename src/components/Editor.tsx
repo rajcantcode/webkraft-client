@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { FileContentObj, useWorkspaceStore } from "../store";
 import { loadFile, loadNodeModulesFile } from "../helpers";
 import { Editor as MonacoEditor } from "@monaco-editor/react";
@@ -9,12 +9,6 @@ import DiffMatchPatch from "diff-match-patch";
 
 import FileTabBar from "./FileTabBar";
 import { Socket } from "socket.io-client";
-// type FileContnentObj = {
-//   name: string;
-//   path: string;
-//   language: string;
-//   content: string;
-// };
 
 const Editor = ({
   fileFetchStatus,
@@ -30,36 +24,13 @@ const Editor = ({
   );
   const setFilesContent = useWorkspaceStore((state) => state.setFilesContent);
 
-  // if (selectedFilePath === "") {
-  //   return <div className="h-full bg-emerald-400">Please select a file</div>;
-  // }
+  const editorRef = useRef<any>(null);
 
-  // if (
-  //   (filesContent[selectedFilePath] === undefined ||
-  //     filesContent[selectedFilePath].content === "") &&
-  //   !fileFetchStatus[selectedFilePath]
-  // ) {
-  //   if (selectedFilePath.includes("node_modules")) {
-  //     loadNodeModulesFile(
-  //       selectedFilePath,
-  //       selectedFilePath.slice(selectedFilePath.lastIndexOf("/") + 1),
-  //       fileFetchStatus,
-  //       socket!
-  //     );
-  //   } else {
-  //     loadFile(
-  //       selectedFilePath,
-  //       selectedFilePath.slice(selectedFilePath.lastIndexOf("/") + 1), // filename
-  //       fileFetchStatus
-  //     );
-  //   }
-  //   // Load file content
-  //   return <div className="h-full bg-emerald-400">Loading...</div>;
-  // }
-
-  // if (fileFetchStatus[selectedFilePath]) {
-  //   return <div className="h-full bg-emerald-400">Loading...</div>;
-  // }
+  useEffect(() => {
+    if (editorRef.current) {
+      handleEditorDidMount(editorRef.current, selectedFilePath);
+    }
+  }, [selectedFilePath]);
 
   const dmpRef = useRef(new DiffMatchPatch());
 
@@ -105,8 +76,8 @@ const Editor = ({
     [selectedFilePath, setFilesContent, filesContent]
   );
 
-  const handleEditorDidMount = (editor, monaco, selectedFilePath: string) => {
-    monaco.editor.setTheme("grey-bg-vs-dark");
+  const handleEditorDidMount = (editor, selectedFilePath: string) => {
+    editor.focus();
     const editorDomNode = editor.getDomNode();
     if (editorDomNode) {
       editorDomNode.addEventListener("dragover", (e) => {
@@ -116,7 +87,6 @@ const Editor = ({
 
       editor.onDropIntoEditor(({ position, event }) => {
         const path = event.dataTransfer.getData("text/plain");
-
         event.preventDefault();
         event.stopPropagation();
         if (path === selectedFilePath) return;
@@ -168,9 +138,10 @@ const Editor = ({
         }}
         overrideServices={{}}
         className="h-[calc(100%-30px)]"
-        onMount={(editor, monaco) =>
-          handleEditorDidMount(editor, monaco, selectedFilePath)
-        }
+        onMount={(editor, monaco) => {
+          editorRef.current = editor;
+          monaco.editor.setTheme("grey-bg-vs-dark");
+        }}
         beforeMount={(monaco) => {
           monaco.editor.defineTheme("grey-bg-vs-dark", {
             base: "vs-dark",

@@ -11,6 +11,7 @@ import {
   checkIfNameIsUnique,
   checkIfNameIsValid,
   getFolderIcon,
+  moveNodes,
 } from "../lib/utils";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Input } from "./ui/Input";
@@ -22,6 +23,7 @@ type HandleRename = (
   newName: string,
   type: "file" | "folder"
 ) => void;
+type HandleMoveNodes = (sourcePath: string, destinationPath: string) => void;
 type HandleDelete = (path: string, type: "file" | "folder") => void;
 type HandleAddFile = (node: TreeNode, fileName: string) => void;
 type HandleAddFolder = (node: TreeNode, folderName: string) => void;
@@ -41,6 +43,7 @@ const TreeFolder = ({
   handleDelete,
   handleAddFile,
   handleAddFolder,
+  handleMoveNodes,
   checkRenameValueIsUnique,
   fileFetchStatus,
   socketLink,
@@ -52,6 +55,7 @@ const TreeFolder = ({
   handleDelete: HandleDelete;
   handleAddFile: HandleAddFile;
   handleAddFolder: HandleAddFolder;
+  handleMoveNodes: HandleMoveNodes;
   checkRenameValueIsUnique: CheckRenameValueIsUnique;
   fileFetchStatus: { [key: string]: boolean };
   socketLink: string;
@@ -64,6 +68,15 @@ const TreeFolder = ({
     error: "",
   });
   const inputRef = useRef<HTMLInputElement>(null);
+  const timer = useRef<{
+    dragCounter: number;
+    set: boolean;
+    id: NodeJS.Timeout | null;
+  }>({
+    dragCounter: 0,
+    set: false,
+    id: null,
+  });
   const deleteFolderModalRef = useRef<HTMLDialogElement>(null);
 
   useEffect(() => {
@@ -231,12 +244,97 @@ const TreeFolder = ({
     [node]
   );
 
+  const handleDrop = useCallback(
+    (e: React.DragEvent<HTMLDivElement>) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      // Clear the timeout on drop event
+      if (timer.current.set && timer.current.id) {
+        clearTimeout(timer.current.id);
+        timer.current.id = null;
+        timer.current.set = false;
+      }
+      console.log("Drop event received");
+      const path = e.dataTransfer.getData("text/plain");
+      const pathExcludingName = path.split("/").slice(0, -1).join("/");
+      if (pathExcludingName === node.path) {
+        console.log("Cannot move the file/folder to the same location");
+        return;
+      }
+
+      const name = path.split("/").pop();
+      if (!name) return;
+      const isNameUnique = checkIfNameIsUnique(node, name);
+      if (!isNameUnique) {
+        // ToDo -> Dislay a modal which will ask user to replace the file/folder with the same name, i.e overwrite
+        return;
+      }
+      const isNameValid = checkIfNameIsValid(name);
+      if (!isNameValid) {
+        // ToDo -> Display error message
+        return;
+      }
+      handleMoveNodes(path, node.path);
+    },
+    [node]
+  );
+
+  const handleDragEnter = useCallback(
+    (e: React.DragEvent<HTMLDivElement>) => {
+      e.preventDefault();
+      e.stopPropagation();
+      timer.current.dragCounter += 1;
+      if (timer.current.dragCounter === 1) {
+        if (!isOpen && !timer.current.set) {
+          timer.current.set = true;
+          timer.current.id = setTimeout(() => {
+            setIsOpen(true);
+          }, 400);
+        }
+      }
+    },
+    [isOpen, setIsOpen]
+  );
+
+  const handleDragLeave = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    timer.current.dragCounter -= 1;
+    if (timer.current.dragCounter === 0) {
+      if (timer.current.set && timer.current.id) {
+        clearTimeout(timer.current.id);
+        timer.current.set = false;
+        timer.current.id = null;
+      }
+    }
+  }, []);
+
+  const handleDragOver = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    e.dataTransfer.dropEffect = "move";
+  }, []);
+
+  const handleDragStart = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+    e.dataTransfer.setData("text/plain", node.path);
+    e.dataTransfer.effectAllowed = "move";
+  }, []);
+
   const { icon, openIcon } = getFolderIcon(node.name);
   return (
-    <div className="w-full folder-container">
+    <div
+      className="w-full folder-container"
+      onDrop={handleDrop}
+      onDragEnter={handleDragEnter}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+    >
       <div
         className="flex items-center justify-between py-[1px] pr-1 folder-details group min-h-[32px] sm:min-h-[24px] text-sm hover:bg-[#1C2333] focus:bg-[#1C2333] focus:shadow-[0_0_0_2px_#0079F2] rounded-md px-1 w-[99%] mt-1.5"
         onClick={handleFolderClick}
+        draggable={!inputState.show}
+        onDragStart={handleDragStart}
         tabIndex={0}
       >
         {inputState.show && inputState.operation === "rename" ? (
@@ -315,6 +413,7 @@ const TreeFolder = ({
                   handleDelete={handleDelete}
                   handleAddFile={handleAddFile}
                   handleAddFolder={handleAddFolder}
+                  handleMoveNodes={handleMoveNodes}
                   checkRenameValueIsUnique={checkRenameNodeIsUnique}
                   fileFetchStatus={fileFetchStatus}
                   socketLink={socketLink}

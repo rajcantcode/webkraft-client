@@ -21,270 +21,13 @@ import {
   deleteFilePathsInFileTabBar,
   deletePathsFromFilesContentObj,
   findNode,
+  moveNodes,
   updateFilePathsInFileTabBar,
   updatePath,
 } from "../lib/utils.js";
 import { ScrollArea } from "./ui/ScrollArea.js";
 import { Socket } from "socket.io-client";
 import { sortNodeChildren } from "../helpers.js";
-
-const sampleTree: TreeNode[] = [
-  {
-    type: "folder",
-    name: "client",
-    path: "client",
-    children: [
-      {
-        type: "folder",
-        name: "node_modules",
-        path: "client/node_modules",
-        children: [],
-      },
-      {
-        type: "folder",
-        name: "public",
-        path: "client/public",
-        children: [
-          {
-            type: "file",
-            name: "favicon.ico",
-            path: "client/public/favicon.ico",
-          },
-        ],
-      },
-      {
-        type: "folder",
-        name: "src",
-        path: "client/src",
-        children: [
-          {
-            type: "folder",
-            name: "assets",
-            path: "client/src/assets",
-            children: [
-              {
-                type: "file",
-                name: "react.svg",
-                path: "client/src/assets/react.svg",
-              },
-            ],
-          },
-          {
-            type: "folder",
-            name: "components",
-            path: "client/src/components",
-            children: [],
-          },
-          {
-            type: "folder",
-            name: "hooks",
-            path: "client/src/hooks",
-            children: [
-              {
-                type: "file",
-                name: "use-on-click-outside.ts",
-                path: "client/src/hooks/use-on-click-outside.ts",
-              },
-            ],
-          },
-          {
-            type: "folder",
-            name: "icons",
-            path: "client/src/icons",
-            children: [
-              {
-                type: "file",
-                name: "exituseonclickoutside.svg",
-                path: "client/src/icons/exituseonclickoutside.svg",
-              },
-              {
-                type: "file",
-                name: "logo.svg",
-                path: "client/src/icons/logo.svg",
-              },
-              {
-                type: "file",
-                name: "search-icon.svg",
-                path: "client/src/icons/search-icon.svg",
-              },
-              {
-                type: "file",
-                name: "searchicon.png",
-                path: "client/src/icons/searchicon.png",
-              },
-            ],
-          },
-          {
-            type: "folder",
-            name: "lib",
-            path: "client/src/lib",
-            children: [
-              {
-                type: "file",
-                name: "utils.ts",
-                path: "client/src/lib/utils.ts",
-              },
-            ],
-          },
-          {
-            type: "folder",
-            name: "pages",
-            path: "client/src/pages",
-            children: [
-              {
-                type: "file",
-                name: "Home.tsx",
-                path: "client/src/pages/Home.tsx",
-              },
-              {
-                type: "file",
-                name: "Login.tsx",
-                path: "client/src/pages/Login.tsx",
-              },
-              {
-                type: "file",
-                name: "SignUp.tsx",
-                path: "client/src/pages/SignUp.tsx",
-              },
-              {
-                type: "file",
-                name: "Welcome.tsx",
-                path: "client/src/pages/Welcome.tsx",
-              },
-              {
-                type: "file",
-                name: "Workspace.tsx",
-                path: "client/src/pages/Workspace.tsx",
-              },
-            ],
-          },
-          {
-            type: "folder",
-            name: "styles",
-            path: "client/src/styles",
-            children: [
-              {
-                type: "file",
-                name: "global.css",
-                path: "client/src/styles/global.css",
-              },
-            ],
-          },
-        ],
-      },
-      {
-        type: "file",
-        name: "App.css",
-        path: "client/App.css",
-      },
-      {
-        type: "file",
-        name: "App.tsx",
-        path: "client/App.tsx",
-      },
-      {
-        type: "file",
-        name: "constants.ts",
-        path: "client/constants.ts",
-      },
-      {
-        type: "file",
-        name: "filetree.json",
-        path: "client/filetree.json",
-      },
-      {
-        type: "file",
-        name: "helpers.ts",
-        path: "client/helpers.ts",
-      },
-      {
-        type: "file",
-        name: "index.css",
-        path: "client/index.css",
-      },
-      {
-        type: "file",
-        name: "main.tsx",
-        path: "client/main.tsx",
-      },
-      {
-        type: "file",
-        name: "store.ts",
-        path: "client/store.ts",
-      },
-      {
-        type: "file",
-        name: "vite-env.d.ts",
-        path: "client/vite-env.d.ts",
-      },
-      {
-        type: "file",
-        name: ".env",
-        path: "client/.env",
-      },
-      {
-        type: "file",
-        name: ".gitignore",
-        path: "client/.gitignore",
-      },
-      {
-        type: "file",
-        name: "eslint.config.js",
-        path: "client/eslint.config.js",
-      },
-      {
-        type: "file",
-        name: "index.html",
-        path: "client/index.html",
-      },
-      {
-        type: "file",
-        name: "package-lock.json",
-        path: "client/package-lock.json",
-      },
-      {
-        type: "file",
-        name: "package.json",
-        path: "client/package.json",
-      },
-      {
-        type: "file",
-        name: "postcss.config.js",
-        path: "client/postcss.config.js",
-      },
-      {
-        type: "file",
-        name: "README.md",
-        path: "client/README.md",
-      },
-      {
-        type: "file",
-        name: "tailwind.config.js",
-        path: "client/tailwind.config.js",
-      },
-      {
-        type: "file",
-        name: "tsconfig.app.json",
-        path: "client/tsconfig.app.json",
-      },
-      {
-        type: "file",
-        name: "tsconfig.json",
-        path: "client/tsconfig.json",
-      },
-      {
-        type: "file",
-        name: "tsconfig.node.json",
-        path: "client/tsconfig.node.json",
-      },
-      {
-        type: "file",
-        name: "vite.config.ts",
-        path: "client/vite.config.ts",
-      },
-    ],
-  },
-];
 
 const FileTree = ({
   padLeft,
@@ -327,7 +70,7 @@ const FileTree = ({
       node.name = newName;
       const oldPath = node.path;
       node.path = parentPath + "/" + newName;
-
+      sortNodeChildren(parentNode);
       if (node.type === "file") {
         setFilesContent((prev) => {
           const newFilesContent = { ...prev, [node.path]: prev[oldPath] };
@@ -343,7 +86,8 @@ const FileTree = ({
         updateFilePathsInFileTabBar(undefined, renamedPaths);
         setFilesContent({ ...filesContent });
       }
-      const fileTreeCopy = structuredClone(fileTree);
+      // const fileTreeCopy = structuredClone(fileTree);
+      const fileTreeCopy = { ...fileTree };
       setFileTree(fileTreeCopy);
       const action = type === "file" ? "file:rename" : "folder:rename";
       socket?.emit(
@@ -374,7 +118,8 @@ const FileTree = ({
               setFilesContent({ ...filesContent });
               updateFilePathsInFileTabBar(undefined, renamedPaths);
             }
-            const fileTreeCopy = structuredClone(fileTree);
+            // const fileTreeCopy = structuredClone(fileTree);
+            const fileTreeCopy = { ...fileTree };
             setFileTree(fileTreeCopy);
 
             console.error("Error renaming file/folder", error);
@@ -391,7 +136,8 @@ const FileTree = ({
       if (!fileTree) {
         return;
       }
-      const fileTreeCopy = structuredClone(fileTree);
+      // const fileTreeCopy = structuredClone(fileTree);
+      const fileTreeCopy = { ...fileTree };
       const parentPath = path.split("/").slice(0, -1).join("/");
       const parentNode = findNode(fileTreeCopy, parentPath);
       if (!parentNode || parentNode.type === "file") return;
@@ -443,7 +189,8 @@ const FileTree = ({
             parentNode.children.push(nodeToBeDeleted!);
             // ToDo -> Sort the children array
             sortNodeChildren(parentNode);
-            const fileTreeCopy = structuredClone(fileTree);
+            // const fileTreeCopy = structuredClone(fileTree);
+            const fileTreeCopy = { ...fileTree };
             setFileTree(fileTreeCopy);
             setFilesContent((prev) => ({
               ...prev,
@@ -482,7 +229,9 @@ const FileTree = ({
         path: `${node.path}/${fileName}`,
       });
       // ToDo -> Also sort the children array
-      const fileTreeCopy = structuredClone(fileTree);
+      sortNodeChildren(node);
+      // const fileTreeCopy = structuredClone(fileTree);
+      const fileTreeCopy = { ...fileTree };
       setFileTree(fileTreeCopy);
       setFilesContent((prev) => ({
         ...prev,
@@ -503,7 +252,8 @@ const FileTree = ({
             node.children = node.children.filter(
               (node) => node.path !== `${node.path}/${fileName}`
             );
-            const fileTreeCopy = structuredClone(fileTree);
+            // const fileTreeCopy = structuredClone(fileTree);
+            const fileTreeCopy = { ...fileTree };
             setFileTree(fileTreeCopy);
             setFilesContent((prev) => {
               const newFilesContent = { ...prev };
@@ -546,7 +296,8 @@ const FileTree = ({
         children: [],
       });
       // Also sort the children array
-      const fileTreeCopy = structuredClone(fileTree);
+      // const fileTreeCopy = structuredClone(fileTree);
+      const fileTreeCopy = { ...fileTree };
       setFileTree(fileTreeCopy);
 
       socket?.emit(
@@ -558,7 +309,8 @@ const FileTree = ({
             node.children = node.children.filter(
               (node) => node.path !== `${node.path}/${folderName}`
             );
-            const fileTreeCopy = structuredClone(fileTree);
+            // const fileTreeCopy = structuredClone(fileTree);
+            const fileTreeCopy = { ...fileTree };
             setFileTree(fileTreeCopy);
             console.error("Error adding folder", error);
             // ToDo -> Display a toast message
@@ -569,6 +321,30 @@ const FileTree = ({
     [fileTree]
   );
 
+  const handleMoveNodes = useCallback(
+    (sourcePath: string, destPath: string) => {
+      moveNodes(sourcePath, destPath);
+      const sourceFileName = sourcePath.split("/").pop();
+      socket?.emit(
+        "file:move",
+        { sourcePath, destPath },
+        (
+          error: Error | null,
+          data: { success: boolean; sourcePath: string; destPath: string }
+        ) => {
+          if (error) {
+            console.error("Error moving files");
+            moveNodes(
+              destPath + "/" + sourceFileName,
+              sourcePath.split("/").slice(0, -1).join("/")
+            );
+          }
+        }
+      );
+    },
+    []
+  );
+
   useEffect(() => {
     if (!socket) return;
     const handleFileAdd = (data: { path: string }) => {
@@ -577,8 +353,10 @@ const FileTree = ({
       }
       const { path } = data;
       const parentPath = path.split("/").slice(0, -1).join("/");
-      const fileTreeCopy = structuredClone(fileTree);
+      // const fileTreeCopy = structuredClone(fileTree);
+      const fileTreeCopy = { ...fileTree };
       const parentNode = findNode(fileTreeCopy, parentPath);
+
       if (!parentNode || parentNode.type === "file") return;
       const fileName = path.split("/").pop();
       parentNode.children.push({
@@ -589,16 +367,18 @@ const FileTree = ({
       sortNodeChildren(parentNode);
       setFileTree(fileTreeCopy);
       const fileExtension = fileName!.split(".").pop();
-      setFilesContent((prev) => ({
-        ...prev,
-        [path]: {
-          name: fileName!,
-          content: "",
-          language: fileExtension
-            ? editorSupportedLanguages[fileExtension] || "text"
-            : "text",
-        },
-      }));
+      if (!path.includes("node_modules")) {
+        setFilesContent((prev) => ({
+          ...prev,
+          [path]: {
+            name: fileName!,
+            content: "",
+            language: fileExtension
+              ? editorSupportedLanguages[fileExtension] || "text"
+              : "text",
+          },
+        }));
+      }
     };
 
     const handleFileChange = (data: { path: string; content: string }) => {
@@ -613,7 +393,8 @@ const FileTree = ({
       if (!fileTree) {
         return;
       }
-      const fileTreeCopy = structuredClone(fileTree);
+      // const fileTreeCopy = structuredClone(fileTree);
+      const fileTreeCopy = { ...fileTree };
       const { path } = data;
       const parentPath = path.split("/").slice(0, -1).join("/");
       const parentNode = findNode(fileTreeCopy, parentPath);
@@ -636,7 +417,8 @@ const FileTree = ({
       }
       const { path } = data;
       const parentPath = path.split("/").slice(0, -1).join("/");
-      const fileTreeCopy = structuredClone(fileTree);
+      // const fileTreeCopy = structuredClone(fileTree);
+      const fileTreeCopy = { ...fileTree };
       const parentNode = findNode(fileTreeCopy, parentPath);
       if (!parentNode || parentNode.type === "file") return;
       const folderName = path.split("/").pop();
@@ -656,7 +438,8 @@ const FileTree = ({
       }
       const { path } = data;
       const parentPath = path.split("/").slice(0, -1).join("/");
-      const fileTreeCopy = structuredClone(fileTree);
+      // const fileTreeCopy = structuredClone(fileTree);
+      const fileTreeCopy = { ...fileTree };
       const parentNode = findNode(fileTreeCopy, parentPath);
       if (!parentNode || parentNode.type === "file") return;
       const nodeToBeDeleted = parentNode.children.find(
@@ -719,6 +502,7 @@ const FileTree = ({
                 handleDelete={handleDelete}
                 handleAddFile={handleAddFile}
                 handleAddFolder={handleAddFolder}
+                handleMoveNodes={handleMoveNodes}
                 checkRenameValueIsUnique={(renameValue: string) =>
                   checkRenameNodeIsUnique(node, renameValue)
                 }

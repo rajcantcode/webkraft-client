@@ -71,6 +71,7 @@ import {
 } from "material-icon-theme";
 import { FileContentObj, TreeNode } from "../constants";
 import { RenamePathObj, useWorkspaceStore } from "../store";
+import { sortNodeChildren } from "../helpers";
 export const cn = (...inputs: ClassValue[]) => {
   return twMerge(clsx(inputs));
 };
@@ -349,6 +350,84 @@ export const deletePathsFromFilesContentObj = (
       }
     }
   });
+};
+
+export const moveNodes = (sourcePath: string, destPath: string) => {
+  const { fileStructure, filesContent, setFileStructure, setFilesContent } =
+    useWorkspaceStore.getState();
+  if (!fileStructure) {
+    return;
+  }
+  const fileStructureCopy = structuredClone(fileStructure);
+  const filesContentCopy = structuredClone(filesContent);
+
+  // Find parent of source node and remove source node from parent's children
+  const sourceNodeParent = findNode(
+    fileStructureCopy!,
+    sourcePath.split("/").slice(0, -1).join("/")
+  );
+  if (!sourceNodeParent || sourceNodeParent.type === "file") {
+    return;
+  }
+  const { filteredChildren, foundNode: sourceNode } = filterAndFindNode(
+    sourceNodeParent,
+    sourcePath
+  );
+  if (!sourceNode) {
+    return;
+  }
+  sourceNodeParent.children = filteredChildren;
+
+  // Find destination node and add source node to destination node's children
+  const destNode = findNode(fileStructureCopy!, destPath);
+  if (!destNode || destNode.type === "file") {
+    return;
+  }
+  sourceNode.path = destNode.path + "/" + sourceNode.name;
+  destNode.children.push(sourceNode);
+  sortNodeChildren(destNode);
+
+  // Update filesContent and fileTabs based upon whether sourceNode is a file or folder
+  if (sourceNode.type === "file") {
+    setFilesContent((prev) => {
+      const newFilesContent = { ...prev, [sourceNode.path]: prev[sourcePath] };
+      delete newFilesContent[sourcePath];
+      return newFilesContent;
+    });
+    updateFilePathsInFileTabBar(
+      { oldPath: sourcePath, newPath: sourceNode.path },
+      undefined
+    );
+  } else {
+    const renamedPaths: RenamePathObj[] = [];
+    updatePath(sourceNode, sourceNode.path, renamedPaths, filesContentCopy);
+    updateFilePathsInFileTabBar(undefined, renamedPaths);
+    setFilesContent(filesContentCopy);
+  }
+
+  // Update fileStructure
+  setFileStructure(fileStructureCopy);
+};
+
+export const filterAndFindNode = (
+  parentNode: TreeNode,
+  nodePathToBeFiltered: string
+) => {
+  if (parentNode.type === "file") {
+    throw new Error("Not a folder");
+  }
+  let filteredChildren: TreeNode[] = [];
+  let foundNode: TreeNode | null = null as TreeNode | null;
+
+  parentNode.children.forEach((child) => {
+    if (child.path !== nodePathToBeFiltered) {
+      filteredChildren.push(child);
+    } else {
+      foundNode = child;
+    }
+  });
+
+  return { filteredChildren, foundNode };
 };
 
 export const updateFilePathsInFileTabBar = (

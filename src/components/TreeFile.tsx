@@ -73,7 +73,7 @@ const TreeFile = ({
   const handleDragStart = useCallback(
     (e: React.DragEvent<HTMLDivElement>) => {
       e.dataTransfer.setData("text/plain", node.path);
-      e.dataTransfer.effectAllowed = "copy";
+      e.dataTransfer.effectAllowed = "copyMove";
     },
     [node]
   );

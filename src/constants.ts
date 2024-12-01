@@ -13,6 +13,7 @@ export type TreeNode =
       children: TreeNode[];
     };
 
+export type FolderNode = Extract<TreeNode, { type: "folder" }>;
 export type TreeFileNode = {
   name: string;
   path: string;

@@ -34,6 +34,7 @@ type InputState = {
   show: boolean;
   error: string;
 };
+type GetChildren = (node: TreeNode) => void;
 
 const TreeFolder = ({
   node,
@@ -45,6 +46,8 @@ const TreeFolder = ({
   handleAddFolder,
   handleMoveNodes,
   checkRenameValueIsUnique,
+  getChildren,
+  isNodeModulesChildrenReceived,
   fileFetchStatus,
   socketLink,
 }: {
@@ -57,6 +60,10 @@ const TreeFolder = ({
   handleAddFolder: HandleAddFolder;
   handleMoveNodes: HandleMoveNodes;
   checkRenameValueIsUnique: CheckRenameValueIsUnique;
+  getChildren: GetChildren;
+  isNodeModulesChildrenReceived: React.MutableRefObject<{
+    [path: string]: boolean;
+  }>;
   fileFetchStatus: { [key: string]: boolean };
   socketLink: string;
 }) => {
@@ -150,6 +157,17 @@ const TreeFolder = ({
       }
     } else {
       if (inputState.show) return;
+      console.log(isNodeModulesChildrenReceived.current);
+      if (
+        !isOpen &&
+        node.path.includes("node_modules") &&
+        !isNodeModulesChildrenReceived.current[node.path]
+      ) {
+        getChildren(node);
+        setIsOpen(true);
+        return;
+      }
+      console.log("Children already received");
       if (!isOpen && node.children.length > 0) {
         if (node.path.includes("node_modules")) {
           loadFilesOfNodeModulesFolder(node, fileFetchStatus, socketLink);
@@ -391,14 +409,14 @@ const TreeFolder = ({
           </>
         )}
       </div>
-      {node.children && node.children.length > 0 && (
+      {isOpen && node.children && node.children.length > 0 && (
         <div
           className={`children border-l border-[#2A3244] overflow-y-hidden overflow-x-hidden`}
           style={{
             paddingLeft: `${padLeft}px`,
             paddingBottom: isOpen ? "5px" : "0px",
-            maxHeight: isOpen ? "10000px" : "0px",
-            transition: "max-height 0.75s ease",
+            // maxHeight: isOpen ? "10000px" : "0px",
+            // transition: "max-height 0.75s ease",
           }}
         >
           {node.children.map((child) => {
@@ -415,6 +433,8 @@ const TreeFolder = ({
                   handleAddFolder={handleAddFolder}
                   handleMoveNodes={handleMoveNodes}
                   checkRenameValueIsUnique={checkRenameNodeIsUnique}
+                  isNodeModulesChildrenReceived={isNodeModulesChildrenReceived}
+                  getChildren={getChildren}
                   fileFetchStatus={fileFetchStatus}
                   socketLink={socketLink}
                 />

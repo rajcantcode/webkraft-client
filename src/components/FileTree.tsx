@@ -4,10 +4,12 @@ import React, {
   useState,
   useCallback,
   useLayoutEffect,
+  useRef,
 } from "react";
 import {
   editorSupportedLanguages,
   FileContentObj,
+  FolderNode,
   TreeNode,
 } from "../constants.js";
 import TreeFolder from "./TreeFolder.js";
@@ -27,7 +29,7 @@ import {
 } from "../lib/utils.js";
 import { ScrollArea } from "./ui/ScrollArea.js";
 import { Socket } from "socket.io-client";
-import { sortNodeChildren } from "../helpers.js";
+import { loadFilesOfNodeModulesFolder, sortNodeChildren } from "../helpers.js";
 
 const FileTree = ({
   padLeft,
@@ -41,6 +43,7 @@ const FileTree = ({
   const fileTree = useWorkspaceStore((state) => state.fileStructure);
   const setFileTree = useWorkspaceStore((state) => state.setFileStructure);
   const setFilesContent = useWorkspaceStore((state) => state.setFilesContent);
+  const isNodeModulesChildrenReceived = useRef<{ [path: string]: boolean }>({});
 
   const checkRenameNodeIsUnique = useCallback(
     (node: TreeNode, renameValue: string) => {
@@ -87,7 +90,7 @@ const FileTree = ({
         setFilesContent({ ...filesContent });
       }
       // const fileTreeCopy = structuredClone(fileTree);
-      const fileTreeCopy = { ...fileTree };
+      const fileTreeCopy = [...fileTree];
       setFileTree(fileTreeCopy);
       const action = type === "file" ? "file:rename" : "folder:rename";
       socket?.emit(
@@ -119,7 +122,7 @@ const FileTree = ({
               updateFilePathsInFileTabBar(undefined, renamedPaths);
             }
             // const fileTreeCopy = structuredClone(fileTree);
-            const fileTreeCopy = { ...fileTree };
+            const fileTreeCopy = [...fileTree];
             setFileTree(fileTreeCopy);
 
             console.error("Error renaming file/folder", error);
@@ -131,13 +134,42 @@ const FileTree = ({
     [fileTree]
   );
 
+  const getChildren = useCallback(
+    (node: TreeNode) => {
+      if (
+        node.type === "file" ||
+        isNodeModulesChildrenReceived.current[node.path]
+      )
+        return;
+      socket?.emit(
+        "get:children",
+        { path: node.path },
+        (error: Error | null, data: TreeNode[]) => {
+          if (error) {
+            isNodeModulesChildrenReceived.current[node.path] = false;
+            console.error("Error getting children", error);
+            return;
+          }
+          isNodeModulesChildrenReceived.current[node.path] = true;
+          node.children = data;
+          loadFilesOfNodeModulesFolder(
+            node,
+            fileFetchStatus,
+            socket?.io.opts.host!
+          );
+          setFileTree([...fileTree!]);
+        }
+      );
+    },
+    [socket, fileTree]
+  );
   const handleDelete = useCallback(
     (path: string, type: "file" | "folder") => {
       if (!fileTree) {
         return;
       }
       // const fileTreeCopy = structuredClone(fileTree);
-      const fileTreeCopy = { ...fileTree };
+      const fileTreeCopy = [...fileTree];
       const parentPath = path.split("/").slice(0, -1).join("/");
       const parentNode = findNode(fileTreeCopy, parentPath);
       if (!parentNode || parentNode.type === "file") return;
@@ -190,7 +222,7 @@ const FileTree = ({
             // ToDo -> Sort the children array
             sortNodeChildren(parentNode);
             // const fileTreeCopy = structuredClone(fileTree);
-            const fileTreeCopy = { ...fileTree };
+            const fileTreeCopy = [...fileTree];
             setFileTree(fileTreeCopy);
             setFilesContent((prev) => ({
               ...prev,
@@ -231,7 +263,7 @@ const FileTree = ({
       // ToDo -> Also sort the children array
       sortNodeChildren(node);
       // const fileTreeCopy = structuredClone(fileTree);
-      const fileTreeCopy = { ...fileTree };
+      const fileTreeCopy = [...fileTree];
       setFileTree(fileTreeCopy);
       setFilesContent((prev) => ({
         ...prev,
@@ -253,7 +285,7 @@ const FileTree = ({
               (node) => node.path !== `${node.path}/${fileName}`
             );
             // const fileTreeCopy = structuredClone(fileTree);
-            const fileTreeCopy = { ...fileTree };
+            const fileTreeCopy = [...fileTree];
             setFileTree(fileTreeCopy);
             setFilesContent((prev) => {
               const newFilesContent = { ...prev };
@@ -297,7 +329,7 @@ const FileTree = ({
       });
       // Also sort the children array
       // const fileTreeCopy = structuredClone(fileTree);
-      const fileTreeCopy = { ...fileTree };
+      const fileTreeCopy = [...fileTree];
       setFileTree(fileTreeCopy);
 
       socket?.emit(
@@ -310,7 +342,7 @@ const FileTree = ({
               (node) => node.path !== `${node.path}/${folderName}`
             );
             // const fileTreeCopy = structuredClone(fileTree);
-            const fileTreeCopy = { ...fileTree };
+            const fileTreeCopy = [...fileTree];
             setFileTree(fileTreeCopy);
             console.error("Error adding folder", error);
             // ToDo -> Display a toast message
@@ -354,7 +386,7 @@ const FileTree = ({
       const { path } = data;
       const parentPath = path.split("/").slice(0, -1).join("/");
       // const fileTreeCopy = structuredClone(fileTree);
-      const fileTreeCopy = { ...fileTree };
+      const fileTreeCopy = [...fileTree];
       const parentNode = findNode(fileTreeCopy, parentPath);
 
       if (!parentNode || parentNode.type === "file") return;
@@ -394,7 +426,7 @@ const FileTree = ({
         return;
       }
       // const fileTreeCopy = structuredClone(fileTree);
-      const fileTreeCopy = { ...fileTree };
+      const fileTreeCopy = [...fileTree];
       const { path } = data;
       const parentPath = path.split("/").slice(0, -1).join("/");
       const parentNode = findNode(fileTreeCopy, parentPath);
@@ -418,7 +450,7 @@ const FileTree = ({
       const { path } = data;
       const parentPath = path.split("/").slice(0, -1).join("/");
       // const fileTreeCopy = structuredClone(fileTree);
-      const fileTreeCopy = { ...fileTree };
+      const fileTreeCopy = [...fileTree];
       const parentNode = findNode(fileTreeCopy, parentPath);
       if (!parentNode || parentNode.type === "file") return;
       const folderName = path.split("/").pop();
@@ -439,7 +471,7 @@ const FileTree = ({
       const { path } = data;
       const parentPath = path.split("/").slice(0, -1).join("/");
       // const fileTreeCopy = structuredClone(fileTree);
-      const fileTreeCopy = { ...fileTree };
+      const fileTreeCopy = [...fileTree];
       const parentNode = findNode(fileTreeCopy, parentPath);
       if (!parentNode || parentNode.type === "file") return;
       const nodeToBeDeleted = parentNode.children.find(
@@ -462,17 +494,103 @@ const FileTree = ({
       deleteFilePathsInFileTabBar(undefined, deletedPaths);
     };
 
+    const handleAddFolderBulk = (folderPaths: string[]) => {
+      if (!fileTree) return;
+      const fileTreeCopy = [...fileTree];
+      const parentNodes: { [path: string]: TreeNode } = {};
+      folderPaths.forEach((path) => {
+        const parentPath = path.split("/").slice(0, -1).join("/");
+        if (!parentNodes[parentPath]) {
+          const parentNode = findNode(fileTreeCopy, parentPath);
+          if (!parentNode || parentNode.type === "file") return;
+          parentNodes[parentPath] = parentNode;
+        }
+        const folderName = path.split("/").pop();
+        // @ts-ignore
+        parentNodes[parentPath].children.push({
+          type: "folder",
+          name: folderName!,
+          path,
+          children: [],
+        });
+      });
+      Object.keys(parentNodes).forEach((path) => {
+        sortNodeChildren(parentNodes[path]);
+      });
+      setFileTree(fileTreeCopy);
+    };
+
+    const handleDelFolderBulk = (folderPaths: string[]) => {
+      if (!fileTree) return;
+      const fileTreeCopy = [...fileTree];
+      const parentNodes: { [path: string]: FolderNode } = {};
+      const {
+        filesContent,
+        setFilesContent,
+        fileTabs,
+        setFileTabs,
+        lastSelectedFilePaths,
+        setLastSelectedFilePaths,
+      } = useWorkspaceStore.getState();
+      let fileTabsCopy = [...fileTabs];
+      let lastSelectedFilePathsCopy = [...lastSelectedFilePaths];
+      folderPaths.forEach((path) => {
+        const parentPath = path.split("/").slice(0, -1).join("/");
+        if (!parentNodes[parentPath]) {
+          const parentNode = findNode(fileTreeCopy, parentPath);
+          if (!parentNode || parentNode.type === "file") return;
+          parentNodes[parentPath] = parentNode;
+        }
+        const filteredChildren: TreeNode[] = [];
+        let deletedNode = null as TreeNode | null;
+        parentNodes[parentPath].children.forEach((node) => {
+          if (node.path === path) {
+            deletedNode = node;
+          } else {
+            filteredChildren.push(node);
+          }
+        });
+        parentNodes[parentPath].children = filteredChildren;
+        if (
+          deletedNode &&
+          deletedNode.type === "folder" &&
+          deletedNode.children.length > 0
+        ) {
+          deletedNode.children.forEach((node) => {
+            if (node.type === "file") {
+              delete filesContent[node.path];
+              fileTabsCopy.splice(fileTabs.indexOf(node.path), 1);
+              lastSelectedFilePathsCopy = lastSelectedFilePathsCopy.filter(
+                (path) => path !== node.path
+              );
+            }
+          });
+        }
+      });
+      Object.keys(parentNodes).forEach((path) => {
+        sortNodeChildren(parentNodes[path]);
+      });
+      setFileTree(fileTreeCopy);
+      setFilesContent({ ...filesContent });
+      setFileTabs(fileTabsCopy);
+      setLastSelectedFilePaths(lastSelectedFilePathsCopy);
+    };
+
     socket.on("file:add", handleFileAdd);
     socket.on("file:change", handleFileChange);
     socket.on("file:unlink", handleFileUnlink);
     socket.on("folder:add", handleFolderAdd);
     socket.on("folder:unlink", handleFolderUnlink);
+    socket.on("folder:add:bulk", handleAddFolderBulk);
+    socket.on("folder:del:bulk", handleDelFolderBulk);
     return () => {
       socket.off("file:add", handleFileAdd);
       socket.off("file:change", handleFileChange);
       socket.off("file:unlink", handleFileUnlink);
       socket.off("folder:add", handleFolderAdd);
       socket.off("folder:unlink", handleFolderUnlink);
+      socket.off("folder:add:bulk", handleAddFolderBulk);
+      socket.off("folder:del:bulk", handleDelFolderBulk);
     };
   }, [socket, fileTree, setFileTree, setFilesContent]);
 
@@ -506,8 +624,10 @@ const FileTree = ({
                 checkRenameValueIsUnique={(renameValue: string) =>
                   checkRenameNodeIsUnique(node, renameValue)
                 }
+                getChildren={getChildren}
                 fileFetchStatus={fileFetchStatus}
                 socketLink={socket?.io.opts.host!}
+                isNodeModulesChildrenReceived={isNodeModulesChildrenReceived}
               />
             );
           }

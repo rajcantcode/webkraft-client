@@ -33,7 +33,7 @@ type WorkspaceStore = {
   link: string;
   baseLink: string;
   policy: string;
-  fileStructure: [TreeNode] | null;
+  fileStructure: TreeNode[] | null;
   selectedFilePath: string;
   filesContent: FileContentObj;
   fileTabs: string[];
@@ -45,7 +45,7 @@ type WorkspaceStore = {
     policy: string,
     fileStructure: [TreeNode] | null
   ) => void;
-  setFileStructure: (fileStructure: [TreeNode]) => void;
+  setFileStructure: (fileStructure: TreeNode[]) => void;
   setSelectedFilePath: (path: string) => void;
   setFilesContent: (
     filesContent: FileContentObj | ((prev: FileContentObj) => FileContentObj)

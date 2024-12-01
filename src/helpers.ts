@@ -138,9 +138,7 @@ export const loadFilesOfNodeModulesFolder = async (
   try {
     const files = folder.children.filter(
       (child) =>
-        child.type === "file" &&
-        (currentFilesContent[child.path] === undefined ||
-          currentFilesContent[child.path].content === "")
+        child.type === "file" && currentFilesContent[child.path] === undefined
     );
     const fetchPromises = files.map(async (file) => {
       fileFetchStatus[file.path] = true;

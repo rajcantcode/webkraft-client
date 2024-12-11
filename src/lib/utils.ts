@@ -69,7 +69,13 @@ import {
   type IconPackValue,
   generateManifest,
 } from "material-icon-theme";
-import { FileContentObj, TreeNode } from "../constants";
+import {
+  FileContentObj,
+  FlattenedTreeFileNode,
+  FlattenedTreeFolderNode,
+  TreeFileNode,
+  TreeFolderNode,
+} from "../constants";
 import { RenamePathObj, useWorkspaceStore } from "../store";
 import { sortNodeChildren } from "../helpers";
 export const cn = (...inputs: ClassValue[]) => {
@@ -178,58 +184,10 @@ export const getFolderIcon = (folderName: string) => {
   return { icon: FolderIcons["folder"], openIcon: FolderIcons["folderOpen"] };
 };
 
-const tree: TreeNode[] = [
-  {
-    type: "folder",
-    name: "client",
-    path: "client",
-    children: [
-      {
-        type: "folder",
-        name: "public",
-        path: "client/public",
-        children: [
-          {
-            type: "file",
-            name: "favicon.ico",
-            path: "client/public/favicon.ico",
-          },
-          {
-            type: "file",
-            name: "index.html",
-            path: "client/public/index.html",
-          },
-        ],
-      },
-      {
-        type: "folder",
-        name: "src",
-        path: "client/src",
-        children: [
-          {
-            type: "folder",
-            name: "components",
-            path: "client/src/components",
-            children: [
-              {
-                type: "file",
-                name: "TreeFile.tsx",
-                path: "client/src/components/TreeFile.tsx",
-              },
-              {
-                type: "file",
-                name: "TreeFolder.tsx",
-                path: "client/src/components/TreeFolder.tsx",
-              },
-            ],
-          },
-        ],
-      },
-    ],
-  },
-];
-
-export const findNode = (nodes: TreeNode[], path: string): TreeNode | null => {
+export const findNode = (
+  nodes: Array<TreeFileNode | TreeFolderNode>,
+  path: string
+): TreeFileNode | TreeFolderNode | null => {
   let foundNode = null;
   for (const node of nodes) {
     if (node.path === path) {
@@ -237,7 +195,7 @@ export const findNode = (nodes: TreeNode[], path: string): TreeNode | null => {
       break;
     }
     if (path.startsWith(node.path)) {
-      if (node.type === "folder" && node.children) {
+      if (node.type === "folder" && node.children && node.children.length > 0) {
         return findNode(node.children, path);
       }
     }
@@ -248,16 +206,16 @@ export const findNode = (nodes: TreeNode[], path: string): TreeNode | null => {
 // console.log(findNode(tree, "client/src/components"));
 
 export const updatePath = (
-  node: TreeNode,
+  node: TreeFolderNode,
   newPath: string,
   renamedPaths: RenamePathObj[],
   filesContent: FileContentObj
 ) => {
-  if (node.type === "file" || (node.type === "folder" && !node.children)) {
+  if (node.children.length === 0) {
     node.path = newPath;
     return;
   }
-  // @ts-ignore
+
   node.children.forEach((child) => {
     if (child.type === "file") {
       const newFilePath = newPath + "/" + child.name;
@@ -293,27 +251,12 @@ export const checkIfNameIsValid = (name: string) => {
   return false;
 };
 
-export const checkIfNameIsUnique = (node: TreeNode, name: string) => {
-  if (node.type === "file") {
-    throw new Error("Not a folder");
-  }
-  const lowercaseName = name.toLowerCase();
-  const nodeExists = node.children.find(
-    (child) => child.name.toLowerCase() === lowercaseName
-  );
-
-  return nodeExists ? false : true;
-};
-
 export const addChildrenPathsToDeleteArr = (
-  node: TreeNode,
+  node: TreeFolderNode,
   arr: string[],
   filesContent: FileContentObj,
   deletedFileContent: FileContentObj | null
 ) => {
-  if (node.type === "file") {
-    return;
-  }
   node.children.forEach((child) => {
     if (child.type === "file") {
       arr.push(child.path);
@@ -335,12 +278,9 @@ export const addChildrenPathsToDeleteArr = (
 };
 
 export const deletePathsFromFilesContentObj = (
-  node: TreeNode,
+  node: TreeFolderNode,
   filesContent: FileContentObj
 ) => {
-  if (node.type === "file") {
-    return;
-  }
   node.children.forEach((child) => {
     if (child.type === "file") {
       delete filesContent[child.path];
@@ -353,17 +293,17 @@ export const deletePathsFromFilesContentObj = (
 };
 
 export const moveNodes = (sourcePath: string, destPath: string) => {
-  const { fileStructure, filesContent, setFileStructure, setFilesContent } =
+  const { fileStructure, filesContent, setFilesContent } =
     useWorkspaceStore.getState();
   if (!fileStructure) {
     return;
   }
-  const fileStructureCopy = structuredClone(fileStructure);
-  const filesContentCopy = structuredClone(filesContent);
+  const fileStructureCopy = [...fileStructure];
+  const filesContentCopy = { ...filesContent };
 
   // Find parent of source node and remove source node from parent's children
   const sourceNodeParent = findNode(
-    fileStructureCopy!,
+    fileStructureCopy,
     sourcePath.split("/").slice(0, -1).join("/")
   );
   if (!sourceNodeParent || sourceNodeParent.type === "file") {
@@ -376,14 +316,26 @@ export const moveNodes = (sourcePath: string, destPath: string) => {
   if (!sourceNode) {
     return;
   }
-  sourceNodeParent.children = filteredChildren;
 
-  // Find destination node and add source node to destination node's children
-  const destNode = findNode(fileStructureCopy!, destPath);
+  // Find destination node and check if source node name is unique
+  const destNode = findNode(fileStructureCopy, destPath);
   if (!destNode || destNode.type === "file") {
     return;
   }
+  const isNameUnique = destNode.children.find(
+    (child) => child.name === sourceNode.name
+  );
+  if (isNameUnique) {
+    throw new Error(
+      `A file or folder ${sourceNode.name} already exists at this location`
+    );
+  }
+
+  //Add source node to destination node's children
+  sourceNodeParent.children = filteredChildren;
+
   sourceNode.path = destNode.path + "/" + sourceNode.name;
+  sourceNode.depth = destNode.depth + 1;
   destNode.children.push(sourceNode);
   sortNodeChildren(destNode);
 
@@ -405,19 +357,18 @@ export const moveNodes = (sourcePath: string, destPath: string) => {
     setFilesContent(filesContentCopy);
   }
 
-  // Update fileStructure
-  setFileStructure(fileStructureCopy);
+  return fileStructureCopy;
 };
 
 export const filterAndFindNode = (
-  parentNode: TreeNode,
+  parentNode: TreeFolderNode,
   nodePathToBeFiltered: string
 ) => {
-  if (parentNode.type === "file") {
-    throw new Error("Not a folder");
-  }
-  let filteredChildren: TreeNode[] = [];
-  let foundNode: TreeNode | null = null as TreeNode | null;
+  let filteredChildren: Array<TreeFileNode | TreeFolderNode> = [];
+  let foundNode: TreeFileNode | TreeFolderNode | null = null as
+    | TreeFileNode
+    | TreeFolderNode
+    | null;
 
   parentNode.children.forEach((child) => {
     if (child.path !== nodePathToBeFiltered) {

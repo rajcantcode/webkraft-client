@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { TreeNode } from "./constants";
+import { TreeFileNode, TreeFolderNode } from "./constants";
 import zukeeper from "zukeeper";
 import { devtools } from "zustand/middleware";
 
@@ -33,7 +33,7 @@ type WorkspaceStore = {
   link: string;
   baseLink: string;
   policy: string;
-  fileStructure: TreeNode[] | null;
+  fileStructure: Array<TreeFileNode | TreeFolderNode> | null;
   selectedFilePath: string;
   filesContent: FileContentObj;
   fileTabs: string[];
@@ -43,9 +43,11 @@ type WorkspaceStore = {
     link: string,
     baseLink: string,
     policy: string,
-    fileStructure: [TreeNode] | null
+    fileStructure: Array<TreeFileNode | TreeFolderNode> | null
   ) => void;
-  setFileStructure: (fileStructure: TreeNode[]) => void;
+  setFileStructure: (
+    fileStructure: Array<TreeFileNode | TreeFolderNode>
+  ) => void;
   setSelectedFilePath: (path: string) => void;
   setFilesContent: (
     filesContent: FileContentObj | ((prev: FileContentObj) => FileContentObj)

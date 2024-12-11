@@ -4,8 +4,8 @@ import {
   editorSupportedLanguages,
   FileContent,
   FileContentObj,
+  TreeFolderNode,
 } from "./constants";
-import { TreeNode } from "./constants";
 import { useUserStore, useWorkspaceStore } from "./store";
 import { Socket } from "socket.io-client";
 
@@ -18,7 +18,6 @@ interface LaodWorkspaceResponse {
   workspaceLink?: string;
   socketLink: string;
   isCreator: boolean;
-  // fileTree: TreeNode;
 }
 
 export const verifyUser = async () => {
@@ -75,14 +74,11 @@ export const stopWorkspace = async (workspaceName: string) => {
 };
 
 export const loadFilesOfFolder = async (
-  folder: TreeNode,
+  folder: TreeFolderNode,
   fileFetchStatus: { [key: string]: boolean },
   baseUrl?: string,
   policy?: string
 ) => {
-  if (folder.type !== "folder") {
-    return Promise.reject("Not a folder");
-  }
   const fileContentObj: FileContentObj = {};
   const {
     setFilesContent,
@@ -125,13 +121,10 @@ export const loadFilesOfFolder = async (
 };
 
 export const loadFilesOfNodeModulesFolder = async (
-  folder: TreeNode,
+  folder: TreeFolderNode,
   fileFetchStatus: { [key: string]: boolean },
   socketLink: string
 ) => {
-  if (folder.type !== "folder") {
-    return Promise.reject("Not a folder");
-  }
   const fileContentObj: FileContentObj = {};
   const { setFilesContent, filesContent: currentFilesContent } =
     useWorkspaceStore.getState();
@@ -202,8 +195,8 @@ export const loadFile = async (
   }
 };
 
-export const sortNodeChildren = (node: TreeNode) => {
-  if (node.type === "file" || node.children.length === 0) return;
+export const sortNodeChildren = (node: TreeFolderNode) => {
+  if (node.children.length === 0) return;
   node.children.sort((a, b) => {
     if (a.type === "folder" && b.type === "file") return -1;
     if (a.type === "file" && b.type === "folder") return 1;

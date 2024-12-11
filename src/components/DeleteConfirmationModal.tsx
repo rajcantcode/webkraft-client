@@ -7,13 +7,16 @@ interface DeleteConfirmationModalProps {
   name: string;
   modalRef: RefObject<HTMLDialogElement>;
   path: string;
-  handleDelete: (path: string, type: "file" | "folder") => void;
+  pni: number;
+  handleDelete: (path: string, pni: number, type: "file" | "folder") => void;
 }
+
 const DeleteConfirmationModal = ({
   type,
   name,
   modalRef,
   path,
+  pni,
   handleDelete,
 }: DeleteConfirmationModalProps) => {
   const closeModal = (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
@@ -36,7 +39,7 @@ const DeleteConfirmationModal = ({
         <button
           className="p-2 hover:bg-[#E52222] bg-[#A60808] cursor-pointer rounded-md flex items-center gap-2"
           onClick={(e) => {
-            handleDelete(path, type);
+            handleDelete(path, pni, type);
             closeModal(e);
           }}
         >

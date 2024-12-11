@@ -4,7 +4,7 @@ import { Input } from "./ui/Input";
 import "../styles/template-search-modal.css";
 import { useMutation } from "@tanstack/react-query";
 import axios from "axios";
-import { baseUrl, TreeNode } from "../constants";
+import { baseUrl } from "../constants";
 import { useNavigate } from "react-router-dom";
 import { useUserStore, useWorkspaceStore } from "../store";
 
@@ -27,7 +27,6 @@ interface CreateWorkspaceParams {
 interface CreateWorkspaceResponse {
   workspaceName: string;
   workspaceLink: string;
-  // fileTree: TreeNode;
 }
 
 const Templates: SelectedTemplate[] = [

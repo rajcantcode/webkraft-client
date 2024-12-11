@@ -1,4 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import Console from "../components/Console";
 import Editor from "../components/Editor";
 import FileTree from "../components/FileTree";
@@ -18,9 +24,8 @@ import debounce from "lodash.debounce";
 import { useLifecycles } from "react-use";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useParams } from "react-router-dom";
-import { TreeNode } from "../constants";
 import { io, ManagerOptions, Socket, SocketOptions } from "socket.io-client";
-import { link } from "fs";
+import { TreeFolderNode } from "../constants";
 
 let init = true;
 
@@ -114,7 +119,7 @@ const Workspace = () => {
       if (!data) return;
       // const { link: workspaceLink } = useWorkspaceStore.getState();
       let workspaceLinkCopy: string;
-      let fileTreeCopy: TreeNode;
+      // let fileTreeCopy: TreeNode;
       let baseLinkCopy: string;
       let policyCopy: string;
       const socketLink = data.socketLink;
@@ -177,7 +182,7 @@ const Workspace = () => {
   useEffect(() => {
     if (!socket) return;
 
-    const handleReady = async (data: { fileStructure: TreeNode }) => {
+    const handleReady = async (data: { fileStructure: TreeFolderNode }) => {
       setFileStructure([data.fileStructure]);
       setFileStructureReceived(true);
       await loadFilesOfFolder(

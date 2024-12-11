@@ -1,30 +1,47 @@
 export const baseUrl = import.meta.env.VITE_SERVER_URL;
 
-export type TreeNode =
-  | {
-      name: string;
-      path: string;
-      type: "file";
-    }
-  | {
-      name: string;
-      path: string;
-      type: "folder";
-      children: TreeNode[];
-    };
-
-export type FolderNode = Extract<TreeNode, { type: "folder" }>;
 export type TreeFileNode = {
   name: string;
   path: string;
   type: "file";
+  depth: number;
 };
+
 export type TreeFolderNode = {
   name: string;
   path: string;
   type: "folder";
   children: Array<TreeFolderNode | TreeFileNode>;
+  isExpanded: boolean;
+  depth: number;
 };
+
+// pni: parent node index
+export type FlattenedTreeFileNode = TreeFileNode & {
+  pni: number;
+};
+// index: index of the folder node in the flattened tree
+export type FlattenedTreeFolderNode = Omit<TreeFolderNode, "children"> & {
+  isExpanded: boolean;
+  depth: number;
+  pni: number;
+  index: number;
+};
+
+export type InputNode = {
+  type: "input";
+  operation: "add-file" | "add-folder";
+  path: string;
+  pni: number;
+  value: string;
+  depth: number;
+  error: string;
+};
+
+export type FlattenedTree = Array<
+  FlattenedTreeFolderNode | FlattenedTreeFileNode | InputNode
+>;
+
 export type FileContent = {
   name: string;
   language: string;

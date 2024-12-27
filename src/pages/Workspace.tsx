@@ -1,11 +1,4 @@
-import {
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useRef,
-  useState,
-} from "react";
-import Console from "../components/Console";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Editor from "../components/Editor";
 import FileTree from "../components/FileTree";
 import {
@@ -26,12 +19,11 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { useParams } from "react-router-dom";
 import { io, ManagerOptions, Socket, SocketOptions } from "socket.io-client";
 import { TreeFolderNode } from "../constants";
-
-let init = true;
+import TerminalContainer from "../components/TerminalContainer";
 
 function useSocketConnection(
   socketLink: string | null,
-  options: Partial<ManagerOptions & SocketOptions>
+  options: Partial<ManagerOptions & SocketOptions>,
 ) {
   const [socket, setSocket] = useState<Socket | null>(null);
 
@@ -59,11 +51,11 @@ const Workspace = () => {
   const policy = useWorkspaceStore((state) => state.policy);
   const setWorkspaceData = useWorkspaceStore((state) => state.setWorkspaceData);
   const clearWorkspaceData = useWorkspaceStore(
-    (state) => state.clearWorkspaceData
+    (state) => state.clearWorkspaceData,
   );
   const setFileStructure = useWorkspaceStore((state) => state.setFileStructure);
   const [fileStructureReceived, setFileStructureReceived] = useState(false);
-  const [consoleSize, setConsoleSize] = useState(25);
+  const [terminalContainerSize, setTerminalContainerSize] = useState(25);
   // const socketRef = useRef<Socket | null>(null);
   const [socketLink, setSocketLink] = useState<string | null>(null);
   const socket = useSocketConnection(socketLink, {
@@ -99,14 +91,14 @@ const Workspace = () => {
   });
 
   const request = debounce((size: number) => {
-    setConsoleSize(size);
+    setTerminalContainerSize(size);
   }, 200);
 
   const handleConsoleResize = useCallback(
     (size: number) => {
       request(size);
     },
-    [setConsoleSize]
+    [request],
   );
 
   const {
@@ -136,7 +128,7 @@ const Workspace = () => {
           data.workspaceLink!,
           baseLinkCopy,
           policyCopy,
-          null
+          null,
         );
         workspaceLinkCopy = data.workspaceLink!;
         setSocketLink(socketLink);
@@ -189,7 +181,7 @@ const Workspace = () => {
         data.fileStructure,
         fileFetchStatus.current,
         baseLink,
-        policy
+        policy,
       );
     };
 
@@ -254,7 +246,7 @@ const Workspace = () => {
   }
   if (workspaceLoaded && fileStructureReceived) {
     return (
-      <div className="h-full bg-orange-400">
+      <div className="h-full bg-black">
         <ResizablePanelGroup direction="horizontal">
           <ResizablePanel
             defaultSize={20}
@@ -284,7 +276,11 @@ const Workspace = () => {
                 order={2}
                 onResize={handleConsoleResize}
               >
-                <Console socket={socket} size={consoleSize} />
+                <TerminalContainer
+                  socket={socket}
+                  defaultPid={"default"}
+                  defaultTerminalContainerSize={terminalContainerSize}
+                />
               </ResizablePanel>
             </ResizablePanelGroup>
           </ResizablePanel>

@@ -87,7 +87,4 @@ const Console = ({ socket, size }: { socket: Socket | null; size: number }) => {
   );
 };
 
-// on width change of the terminal, change number of colums
-// on height change of the terminal, change number of rows
-
 export default Console;

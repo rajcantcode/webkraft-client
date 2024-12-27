@@ -11,11 +11,15 @@ const Terminal = ({
   size,
   pid,
   activePid,
+  paneId,
+  activePaneId,
 }: {
   socket: Socket | null;
   size: number;
   pid: string;
   activePid: string;
+  paneId: string;
+  activePaneId: string;
 }) => {
   if (!socket) return null;
   const terminalRef = useRef<HTMLDivElement>(null);
@@ -23,24 +27,8 @@ const Terminal = ({
   const xTerminal = useRef<XTerminal | null>(null);
 
   const fitTerminal = useCallback((e?: UIEvent) => {
-    console.log("fitTerminal called");
-
     if (fitAddonRef.current) {
       fitAddonRef.current.fit();
-    }
-    if (e) {
-      console.log(`Fired by resize`);
-      // console.log(terminalRef.);
-      console.log({
-        rows: xTerminal.current?.rows,
-        cols: xTerminal.current?.cols,
-      });
-    } else {
-      console.log(`Fired by state change`);
-      console.log({
-        rows: xTerminal.current?.rows,
-        cols: xTerminal.current?.cols,
-      });
     }
   }, []);
 
@@ -85,7 +73,6 @@ const Terminal = ({
       terminal.loadAddon(fitAddon);
       terminal.open(terminalRef.current as HTMLDivElement);
       fitAddon.fit();
-      console.log("sending resize event from useEffect directly");
 
       socket.emit(
         "term:resize",
@@ -110,7 +97,6 @@ const Terminal = ({
     terminal.onData((data) => socket.emit("term:write", { data, pid }));
     terminal.onResize(({ cols, rows }) => {
       terminalResizeData[pid] = { cols, rows };
-      console.log(`🤡sending resize event in Terminal.tsx - ${cols}x${rows}`);
       sendResizeEvent(socket);
     });
 
@@ -122,6 +108,9 @@ const Terminal = ({
       pid: string;
     }) => {
       if (resPid === pid) {
+        console.log(`Writing to pid- ${pid}`);
+        console.log(data);
+
         terminal.write(data);
       }
     };
@@ -153,17 +142,29 @@ const Terminal = ({
     if (activePid === pid) {
       if (terminalRef.current) {
         fitTerminal();
+        xTerminal.current?.focus();
       }
     }
   }, [activePid, fitTerminal, pid]);
 
   useEffect(() => {
-    console.log(`received new size in Terminal.tsx - ${size}`);
-    fitTerminal();
-  }, [size, fitTerminal]);
+    if (activePaneId === paneId && pid !== activePid) {
+      fitTerminal();
+    }
+  }, [paneId, activePaneId, pid, activePid, fitTerminal]);
+
+  useEffect(() => {
+    // fitTerminal();
+    if (activePaneId === paneId) {
+      fitTerminal();
+    }
+  }, [size, fitTerminal, activePaneId, paneId]);
 
   return (
-    <div className="h-full bg-pink-400 terminal w-full" ref={terminalRef}></div>
+    <div
+      className="h-full bg-[#1B2333] terminal w-full"
+      ref={terminalRef}
+    ></div>
   );
 };
 

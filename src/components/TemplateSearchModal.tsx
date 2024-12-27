@@ -97,8 +97,8 @@ const TemplateSearchModal = () => {
   useEffect(() => {
     setSearchResults(
       Templates.filter((template) =>
-        template.value.includes(searchValue.toLowerCase())
-      )
+        template.value.includes(searchValue.toLowerCase()),
+      ),
     );
   }, [searchValue]);
 
@@ -123,7 +123,7 @@ const TemplateSearchModal = () => {
         data.workspaceLink,
         baseLinkCopy,
         policyCopy,
-        null
+        null,
         // [data.fileTree]
       );
       navigate(`/workspace/${username}/${data.workspaceName}`);
@@ -138,7 +138,7 @@ const TemplateSearchModal = () => {
     },
   });
   const handleSelectTemplate = (
-    e: React.MouseEvent<HTMLDivElement, MouseEvent>
+    e: React.MouseEvent<HTMLDivElement, MouseEvent>,
   ) => {
     const target = e.target as HTMLElement;
     const templateCard = target.closest(".template-card") as HTMLElement;
@@ -151,7 +151,9 @@ const TemplateSearchModal = () => {
     }
   };
 
-  const createWorkspace = () => {
+  const createWorkspace = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
     if (!selectedTemplate?.value) {
       return;
     }
@@ -168,103 +170,108 @@ const TemplateSearchModal = () => {
     setSelectedTemplate(null);
   };
   return (
-    <div className="flex flex-col gap-4 px-2 py-4 modal-body sm:flex-row">
-      <div className="w-full lhs sm:w-[55%]">
-        <div className="w-full">
-          <p className="mb-2">Template</p>
-          <Input
-            type="text"
-            placeholder="Search Template"
-            className="bg-[#2B3245] focus:bg-[#3C445C] focus:border-2 focus:border-[#0079F2] border-none focus:border-solid"
-            value={searchValue}
-            onChange={(e) => setSearchValue(e.target.value)}
-            onClick={resetInput}
-          />
-          <div
-            className="templates-container h-[225px] w-full rounded-md my-2 overflow-y-scroll border-[#2A3244] border"
-            onClick={handleSelectTemplate}
-          >
-            {selectedTemplate ? (
-              <div className="flex flex-col justify-around h-full p-2 selected-template-card">
-                <div className="header">
-                  <div className="mb-2">
-                    <img
-                      src={selectedTemplate.iconUrl}
-                      alt={selectedTemplate.label}
-                      className="w-10 h-10 rounded-md"
-                    />
-                  </div>
-                  <p className="text-2xl text-white">
-                    {selectedTemplate.label}
-                  </p>
-                </div>
-                <div className="footer">
-                  <p className="text-[#9DA2A6]">
-                    {selectedTemplate.description}
-                  </p>
-                </div>
-              </div>
-            ) : searchResults.length > 0 ? (
-              searchResults.map((template) => (
-                <div
-                  key={template.value}
-                  className="flex items-center gap-3 p-2 cursor-pointer template-card hover:bg-[#3C445C]"
-                  id={template.value}
-                >
-                  <img
-                    src={template.iconUrl}
-                    alt={template.label}
-                    className="w-8 h-8 rounded-md"
-                  />
-                  <p>{template.label}</p>
-                </div>
-              ))
-            ) : (
-              <p>No results found</p>
-            )}
-          </div>
-        </div>
-      </div>
-      <div className="w-full rhs sm:w-[45%]">
-        <div className="flex flex-col justify-between w-full h-full">
-          <div className="header">
-            <p className="mb-2">Title</p>
+    <div className="px-2 py-4 modal-body">
+      <form
+        className="flex flex-col w-full gap-4 sm:flex-row"
+        onSubmit={createWorkspace}
+      >
+        <div className="w-full lhs sm:w-[55%]">
+          <div className="w-full">
+            <p className="mb-2">Template</p>
             <Input
               type="text"
-              placeholder="Name your workspace (optional)"
+              placeholder="Search Template"
               className="bg-[#2B3245] focus:bg-[#3C445C] focus:border-2 focus:border-[#0079F2] border-none focus:border-solid"
-              value={workspaceName}
-              onChange={(e) => setWorkspaceName(e.target.value)}
+              value={searchValue}
+              onChange={(e) => setSearchValue(e.target.value)}
+              onClick={resetInput}
             />
-            {/* Create a checkbox with the label public */}
-            <div className="flex items-center gap-2 mt-3">
-              <Input
-                type="checkbox"
-                id="public"
-                name="public"
-                className="inline w-6 h-6 cursor-pointer"
-                defaultChecked={true}
-                onChange={(e) => setIsPublic(e.target.checked)}
-              />
-              <label htmlFor="public">Public</label>
-            </div>
-            <p className="info text-[#9DA2A6] text-xs mt-1">
-              {isPublic
-                ? "Anyone can view and fork this workspace."
-                : "Only you can view this workspace."}
-            </p>
-          </div>
-          <div className="footer">
-            <button
-              className="w-full btn-primary text-[#F5F9FC] bg-[#0053A6] rounded-md hover:bg-[#0079F2] py-2 my-2"
-              onClick={createWorkspace}
-              disabled={isPending}
+            <div
+              className="templates-container h-[225px] w-full rounded-md my-2 overflow-y-scroll border-[#2A3244] border"
+              onClick={handleSelectTemplate}
             >
-              + Create Workspace
-            </button>
+              {selectedTemplate ? (
+                <div className="flex flex-col justify-around h-full p-2 selected-template-card">
+                  <div className="header">
+                    <div className="mb-2">
+                      <img
+                        src={selectedTemplate.iconUrl}
+                        alt={selectedTemplate.label}
+                        className="w-10 h-10 rounded-md"
+                      />
+                    </div>
+                    <p className="text-2xl text-white">
+                      {selectedTemplate.label}
+                    </p>
+                  </div>
+                  <div className="footer">
+                    <p className="text-[#9DA2A6]">
+                      {selectedTemplate.description}
+                    </p>
+                  </div>
+                </div>
+              ) : searchResults.length > 0 ? (
+                searchResults.map((template) => (
+                  <div
+                    key={template.value}
+                    className="flex items-center gap-3 p-2 cursor-pointer template-card hover:bg-[#3C445C]"
+                    id={template.value}
+                  >
+                    <img
+                      src={template.iconUrl}
+                      alt={template.label}
+                      className="w-8 h-8 rounded-md"
+                    />
+                    <p>{template.label}</p>
+                  </div>
+                ))
+              ) : (
+                <p>No results found</p>
+              )}
+            </div>
           </div>
         </div>
-      </div>
+        <div className="w-full rhs sm:w-[45%]">
+          <div className="flex flex-col justify-between w-full h-full">
+            <div className="header">
+              <p className="mb-2">Title</p>
+              <Input
+                type="text"
+                placeholder="Name your workspace (optional)"
+                className="bg-[#2B3245] focus:bg-[#3C445C] focus:border-2 focus:border-[#0079F2] border-none focus:border-solid"
+                value={workspaceName}
+                onChange={(e) => setWorkspaceName(e.target.value)}
+              />
+              {/* Create a checkbox with the label public */}
+              <div className="flex items-center gap-2 mt-3">
+                <Input
+                  type="checkbox"
+                  id="public"
+                  name="public"
+                  className="inline w-6 h-6 cursor-pointer"
+                  defaultChecked={true}
+                  onChange={(e) => setIsPublic(e.target.checked)}
+                />
+                <label htmlFor="public">Public</label>
+              </div>
+              <p className="info text-[#9DA2A6] text-xs mt-1">
+                {isPublic
+                  ? "Anyone can view and fork this workspace."
+                  : "Only you can view this workspace."}
+              </p>
+            </div>
+            <div className="footer">
+              <button
+                className="w-full btn-primary text-[#F5F9FC] bg-[#0053A6] rounded-md hover:bg-[#0079F2] py-2 my-2"
+                disabled={isPending}
+                type="submit"
+              >
+                + Create Workspace
+              </button>
+            </div>
+          </div>
+        </div>
+      </form>
     </div>
   );
 };

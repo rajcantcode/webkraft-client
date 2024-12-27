@@ -1,4 +1,4 @@
-interface Pane {
+interface Terminal {
   id: string;
   pid: string;
 }
@@ -8,4 +8,7 @@ interface SplitPane {
   panes: Pane[];
 }
 
-export type TerminalPane = Pane | SplitPane;
+export type TerminalPane = {
+  id: string;
+  terminals: Terminal[];
+};

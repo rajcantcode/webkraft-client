@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { Pane } from "../types/terminal";
+import { Terminal as TerminalType } from "../types/terminal";
 import { ResizableHandle, ResizablePanel } from "./ui/Resizable";
 import { Socket } from "socket.io-client";
 import debounce from "lodash.debounce";
@@ -7,18 +7,22 @@ import Terminal from "./Terminal";
 
 const ResizableTerminalPane = ({
   size,
-  pane,
+  terminal,
   activePid,
   setActivePid,
+  paneId,
+  activePaneId,
   setHandle,
   socket,
   order,
   terminalContainerSize,
 }: {
   size: number;
-  pane: Pane;
+  terminal: TerminalType;
   activePid: string;
   setActivePid: (value: React.SetStateAction<string>) => void;
+  paneId: string;
+  activePaneId: string;
   setHandle: boolean;
   socket: Socket | null;
   order?: number;
@@ -37,18 +41,12 @@ const ResizableTerminalPane = ({
   );
 
   useEffect(() => {
-    console.log(
-      "received new terminalContainerSize in ResizableTerminalPane - ",
-      terminalContainerSize,
-    );
-
     setTerminalSize(terminalContainerSize);
   }, [terminalContainerSize]);
   return (
     <>
       <ResizablePanel
-        // key={pane.id}
-        id={pane.id}
+        id={terminal.id}
         order={order}
         defaultSize={size}
         minSize={10}
@@ -61,15 +59,16 @@ const ResizableTerminalPane = ({
         ) => {
           e.stopPropagation();
           e.preventDefault();
-          setActivePid(pane.pid);
+          setActivePid(terminal.pid);
         }}
       >
         <Terminal
-          // key={pane.pid}
           socket={socket}
           size={terminalSize}
-          pid={pane.pid}
+          pid={terminal.pid}
           activePid={activePid}
+          paneId={paneId}
+          activePaneId={activePaneId}
         />
       </ResizablePanel>
       {setHandle ? <ResizableHandle /> : null}

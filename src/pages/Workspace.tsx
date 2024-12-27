@@ -91,7 +91,6 @@ const Workspace = () => {
   });
 
   const request = debounce((size: number) => {
-    console.log(`console resized in workspace to - ${size}`);
     setTerminalContainerSize(size);
   }, 200);
 
@@ -247,7 +246,7 @@ const Workspace = () => {
   }
   if (workspaceLoaded && fileStructureReceived) {
     return (
-      <div className="h-full bg-orange-400">
+      <div className="h-full bg-black">
         <ResizablePanelGroup direction="horizontal">
           <ResizablePanel
             defaultSize={20}

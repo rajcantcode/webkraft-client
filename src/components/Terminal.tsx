@@ -108,9 +108,6 @@ const Terminal = ({
       pid: string;
     }) => {
       if (resPid === pid) {
-        console.log(`Writing to pid- ${pid}`);
-        console.log(data);
-
         terminal.write(data);
       }
     };

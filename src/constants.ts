@@ -12,7 +12,6 @@ export type TreeFolderNode = {
   path: string;
   type: "folder";
   children: Array<TreeFolderNode | TreeFileNode>;
-  isExpanded: boolean;
   depth: number;
 };
 

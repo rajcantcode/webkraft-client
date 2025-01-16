@@ -16,18 +16,18 @@ type HandleRename = (
   depth: number,
   path: string,
   newName: string,
-  type: "file" | "folder"
+  type: "file" | "folder",
 ) => void;
 type HandleMoveNodes = (sourcePath: string, destinationPath: string) => void;
 type HandleDelete = (
   path: string,
   pni: number,
-  type: "file" | "folder"
+  type: "file" | "folder",
 ) => void;
 type CheckIfNameIsUnique = (
   pni: number,
   depth: number,
-  newName: string
+  newName: string,
 ) => boolean;
 type InputState = {
   value: string;
@@ -38,7 +38,7 @@ type GetChildren = (path: string, depth: number) => void;
 type InsertInputNode = (
   index: number,
   operation: "add-file" | "add-folder",
-  depth: number
+  depth: number,
 ) => void;
 type RemoveInputNode = (pni: number) => void;
 type DeleteNamesSet = (parentIndex: number) => void;
@@ -63,6 +63,7 @@ const TreeFolder = ({
   removeInputNode,
   deleteNamesSet,
   isNodeModulesChildrenReceived,
+  showEditOptions,
 }: {
   node: FlattenedTreeFolderNode;
   padLeft: number;
@@ -82,6 +83,7 @@ const TreeFolder = ({
   isNodeModulesChildrenReceived: React.MutableRefObject<{
     [path: string]: boolean;
   }>;
+  showEditOptions: boolean;
 }) => {
   const { isExpanded: isOpen } = node;
   const [inputState, setInputState] = useState<InputState>({
@@ -108,7 +110,7 @@ const TreeFolder = ({
   }, [inputState.show]);
 
   const handleFolderClick = (
-    e: React.MouseEvent<HTMLDivElement, MouseEvent>
+    e: React.MouseEvent<HTMLDivElement, MouseEvent>,
   ) => {
     e.stopPropagation();
 
@@ -180,7 +182,7 @@ const TreeFolder = ({
       const isNameUnique = checkIfNameIsUnique(
         node.pni,
         node.depth,
-        e.target.value
+        e.target.value,
       );
       if (!isNameUnique) {
         setInputState((prev) => ({
@@ -192,14 +194,14 @@ const TreeFolder = ({
       }
       setInputState((prev) => ({ ...prev, value: e.target.value, error: "" }));
     },
-    [node, setInputState]
+    [node, setInputState],
   );
 
   const handleInputSubmit = useCallback(
     (
       e:
         | React.FormEvent<HTMLFormElement>
-        | React.FocusEvent<HTMLInputElement, Element>
+        | React.FocusEvent<HTMLInputElement, Element>,
     ) => {
       e?.stopPropagation();
       e?.preventDefault();
@@ -220,7 +222,7 @@ const TreeFolder = ({
           node.depth,
           node.path,
           inputState.value,
-          node.type
+          node.type,
         );
         setInputState({
           value: "",
@@ -248,7 +250,7 @@ const TreeFolder = ({
         }
       }
     },
-    [node, inputState, setInputState]
+    [node, inputState, setInputState],
   );
 
   const handleDrop = useCallback(
@@ -287,7 +289,7 @@ const TreeFolder = ({
         console.error(error);
       }
     },
-    [node.path]
+    [node.path],
   );
 
   const handleDragEnter = useCallback(
@@ -313,7 +315,7 @@ const TreeFolder = ({
         }
       }
     },
-    [node, isOpen]
+    [node, isOpen],
   );
 
   const handleDragLeave = useCallback((e: React.DragEvent<HTMLDivElement>) => {
@@ -340,7 +342,7 @@ const TreeFolder = ({
       e.dataTransfer.setData("text/plain", node.path);
       e.dataTransfer.effectAllowed = "move";
     },
-    [node]
+    [node],
   );
 
   const { icon, openIcon } = getFolderIcon(node.name);
@@ -369,7 +371,7 @@ const TreeFolder = ({
           {inputState.show ? (
             <form
               onSubmit={handleInputSubmit}
-              className="relative z-10 w-full h-full bg-pink-300"
+              className="relative z-10 w-full h-full"
             >
               <div className="flex items-center w-full h-full gap-2">
                 <Input
@@ -393,7 +395,9 @@ const TreeFolder = ({
             </form>
           ) : (
             <>
-              <div className="flex items-center gap-2 name w-[calc(100%-80px)] sm:w-full sm:group-hover:w-[calc(100%-80px)]">
+              <div
+                className={`flex items-center gap-2 name w-[calc(100%-80px)] sm:w-full ${showEditOptions ? "sm:group-hover:w-[calc(100%-80px)]" : ""}`}
+              >
                 <img
                   src={isOpen ? openIcon : icon}
                   alt=""
@@ -403,24 +407,26 @@ const TreeFolder = ({
                   {node.name}
                 </p>
               </div>
-              <div className="flex items-center gap-2 sm:transition-opacity duration-200 sm:opacity-0 actions-container sm:group-hover:opacity-100 sm:max-w-0 sm:group-hover:max-w-[80px] flex-nowrap max-w-[80px]">
-                <AiOutlineEdit
-                  data-action="rename"
-                  className="transition-transform hover:scale-[1.1] scale-100 action-icon"
-                />
-                <AiOutlineFileAdd
-                  data-action="add-file"
-                  className="transition-transform hover:scale-[1.1] scale-100 action-icon"
-                />
-                <AiOutlineFolderAdd
-                  data-action="add-folder"
-                  className="transition-transform hover:scale-[1.1] scale-100 action-icon"
-                />
-                <AiOutlineDelete
-                  data-action="del-folder"
-                  className="transition-transform hover:scale-[1.1] scale-100 action-icon"
-                />
-              </div>
+              {showEditOptions ? (
+                <div className="flex items-center gap-2 sm:transition-opacity duration-200 sm:opacity-0 actions-container sm:group-hover:opacity-100 sm:max-w-0 sm:group-hover:max-w-[80px] flex-nowrap max-w-[80px]">
+                  <AiOutlineEdit
+                    data-action="rename"
+                    className="transition-transform hover:scale-[1.1] scale-100 action-icon"
+                  />
+                  <AiOutlineFileAdd
+                    data-action="add-file"
+                    className="transition-transform hover:scale-[1.1] scale-100 action-icon"
+                  />
+                  <AiOutlineFolderAdd
+                    data-action="add-folder"
+                    className="transition-transform hover:scale-[1.1] scale-100 action-icon"
+                  />
+                  <AiOutlineDelete
+                    data-action="del-folder"
+                    className="transition-transform hover:scale-[1.1] scale-100 action-icon"
+                  />
+                </div>
+              ) : null}
             </>
           )}
         </div>

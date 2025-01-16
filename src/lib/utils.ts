@@ -1,6 +1,7 @@
 import { twMerge } from "tailwind-merge";
 import { type ClassValue, clsx } from "clsx";
 
+// material-ui file and folder icons
 import folder from "material-icon-theme/icons/folder.svg";
 import folderOpen from "material-icon-theme/icons/folder-open.svg";
 import publicFolder from "material-icon-theme/icons/folder-public.svg";
@@ -69,6 +70,7 @@ import {
   type IconPackValue,
   generateManifest,
 } from "material-icon-theme";
+
 import {
   FileContentObj,
   FlattenedTreeFileNode,
@@ -186,9 +188,29 @@ export const getFolderIcon = (folderName: string) => {
   return { icon: FolderIcons["folder"], openIcon: FolderIcons["folderOpen"] };
 };
 
+export const getBreadcrumbIcon = (fileOrFolderName: string) => {
+  if (FileIcons[fileOrFolderName]) {
+    return FileIcons[fileOrFolderName];
+  }
+  if (FolderIcons[fileOrFolderName]) {
+    return FolderIcons[fileOrFolderName];
+  }
+  const fileSplit = fileOrFolderName.split(".");
+  if (fileSplit.length > 2) {
+    fileSplit.shift();
+    return (
+      FileIcons[fileSplit.join(".")] ||
+      FileIcons[fileSplit.pop()!] ||
+      FileIcons["file"]
+    );
+  } else {
+    return FileIcons[fileSplit.pop()!] || FileIcons["file"];
+  }
+};
+
 export const findNode = (
   nodes: Array<TreeFileNode | TreeFolderNode>,
-  path: string,
+  path: string
 ): TreeFileNode | TreeFolderNode | null => {
   let foundNode = null;
   for (const node of nodes) {
@@ -205,13 +227,11 @@ export const findNode = (
   return foundNode;
 };
 
-// console.log(findNode(tree, "client/src/components"));
-
 export const updatePath = (
   node: TreeFolderNode,
   newPath: string,
   renamedPaths: RenamePathObj[],
-  filesContent: FileContentObj,
+  filesContent: FileContentObj
 ) => {
   if (node.children.length === 0) {
     node.path = newPath;
@@ -257,7 +277,7 @@ export const addChildrenPathsToDeleteArr = (
   node: TreeFolderNode,
   arr: string[],
   filesContent: FileContentObj,
-  deletedFileContent: FileContentObj | null,
+  deletedFileContent: FileContentObj | null
 ) => {
   node.children.forEach((child) => {
     if (child.type === "file") {
@@ -272,7 +292,7 @@ export const addChildrenPathsToDeleteArr = (
           child,
           arr,
           filesContent,
-          deletedFileContent,
+          deletedFileContent
         );
       }
     }
@@ -281,7 +301,7 @@ export const addChildrenPathsToDeleteArr = (
 
 export const deletePathsFromFilesContentObj = (
   node: TreeFolderNode,
-  filesContent: FileContentObj,
+  filesContent: FileContentObj
 ) => {
   node.children.forEach((child) => {
     if (child.type === "file") {
@@ -306,14 +326,14 @@ export const moveNodes = (sourcePath: string, destPath: string) => {
   // Find parent of source node and remove source node from parent's children
   const sourceNodeParent = findNode(
     fileStructureCopy,
-    sourcePath.split("/").slice(0, -1).join("/"),
+    sourcePath.split("/").slice(0, -1).join("/")
   );
   if (!sourceNodeParent || sourceNodeParent.type === "file") {
     return;
   }
   const { filteredChildren, foundNode: sourceNode } = filterAndFindNode(
     sourceNodeParent,
-    sourcePath,
+    sourcePath
   );
   if (!sourceNode) {
     return;
@@ -325,11 +345,11 @@ export const moveNodes = (sourcePath: string, destPath: string) => {
     return;
   }
   const isNameUnique = destNode.children.find(
-    (child) => child.name === sourceNode.name,
+    (child) => child.name === sourceNode.name
   );
   if (isNameUnique) {
     throw new Error(
-      `A file or folder ${sourceNode.name} already exists at this location`,
+      `A file or folder ${sourceNode.name} already exists at this location`
     );
   }
 
@@ -350,7 +370,7 @@ export const moveNodes = (sourcePath: string, destPath: string) => {
     });
     updateFilePathsInFileTabBar(
       { oldPath: sourcePath, newPath: sourceNode.path },
-      undefined,
+      undefined
     );
   } else {
     const renamedPaths: RenamePathObj[] = [];
@@ -364,7 +384,7 @@ export const moveNodes = (sourcePath: string, destPath: string) => {
 
 export const filterAndFindNode = (
   parentNode: TreeFolderNode,
-  nodePathToBeFiltered: string,
+  nodePathToBeFiltered: string
 ) => {
   let filteredChildren: Array<TreeFileNode | TreeFolderNode> = [];
   let foundNode: TreeFileNode | TreeFolderNode | null = null as
@@ -385,7 +405,7 @@ export const filterAndFindNode = (
 
 export const updateFilePathsInFileTabBar = (
   renamePath: RenamePathObj | undefined,
-  renamePaths: RenamePathObj[] | undefined,
+  renamePaths: RenamePathObj[] | undefined
 ) => {
   const {
     fileTabs,
@@ -399,10 +419,10 @@ export const updateFilePathsInFileTabBar = (
   if (renamePath) {
     const { oldPath, newPath } = renamePath;
     const updatedFileTabs = [...fileTabs].map((tab) =>
-      tab === oldPath ? newPath : tab,
+      tab === oldPath ? newPath : tab
     );
     const updatedLastSelectedFilePaths = [...lastSelectedFilePaths].map(
-      (path) => (path === oldPath ? newPath : path),
+      (path) => (path === oldPath ? newPath : path)
     );
     setFileTabs(updatedFileTabs);
     setLastSelectedFilePaths(updatedLastSelectedFilePaths);
@@ -420,12 +440,12 @@ export const updateFilePathsInFileTabBar = (
       }
       // Update fileTabs
       updatedFileTabs = updatedFileTabs.map((tab: string) =>
-        tab === oldPath ? newPath : tab,
+        tab === oldPath ? newPath : tab
       );
 
       // Update lastSelectedFileTabs
       updatedLastSelectedFilePaths = updatedLastSelectedFilePaths.map(
-        (tab: string) => (tab === oldPath ? newPath : tab),
+        (tab: string) => (tab === oldPath ? newPath : tab)
       );
     });
 
@@ -442,7 +462,7 @@ export const updateFilePathsInFileTabBar = (
 
 export const deleteFilePathsInFileTabBar = (
   deletedPath: string | undefined,
-  deletedPaths: string[] | undefined,
+  deletedPaths: string[] | undefined
 ) => {
   const {
     fileTabs,
@@ -455,7 +475,7 @@ export const deleteFilePathsInFileTabBar = (
   if (deletedPath) {
     const updatedFileTabs = [...fileTabs].filter((tab) => tab !== deletedPath);
     const updatedLastSelectedFilePaths = [...lastSelectedFilePaths].filter(
-      (path) => path !== deletedPath,
+      (path) => path !== deletedPath
     );
     setFileTabs(updatedFileTabs);
     if (selectedFilePath === deletedPath) {
@@ -465,10 +485,10 @@ export const deleteFilePathsInFileTabBar = (
   } else if (deletedPaths) {
     const deletedPathsSet = new Set(deletedPaths);
     const updatedFileTabs = [...fileTabs].filter(
-      (tab) => !deletedPathsSet.has(tab),
+      (tab) => !deletedPathsSet.has(tab)
     );
     const updatedLastSelectedFilePaths = [...lastSelectedFilePaths].filter(
-      (path) => !deletedPathsSet.has(path),
+      (path) => !deletedPathsSet.has(path)
     );
     if (deletedPathsSet.has(selectedFilePath)) {
       setSelectedFilePath(updatedLastSelectedFilePaths.pop() || "");

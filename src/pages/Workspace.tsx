@@ -170,7 +170,6 @@ const Workspace = () => {
       console.error(error);
     },
   });
-
   useEffect(() => {
     if (!socket) return;
 

@@ -12,17 +12,17 @@ type HandleRename = (
   depth: number,
   path: string,
   newName: string,
-  type: "file" | "folder"
+  type: "file" | "folder",
 ) => void;
 type HandleDelete = (
   path: string,
   pni: number,
-  type: "file" | "folder"
+  type: "file" | "folder",
 ) => void;
 type CheckIfNameIsUnique = (
   pni: number,
   depth: number,
-  newName: string
+  newName: string,
 ) => boolean;
 type RemoveInputNode = (pni: number) => void;
 type DeleteNamesSet = (parentIndex: number) => void;
@@ -39,6 +39,7 @@ const TreeFile = ({
   handleMoveNodes,
   removeInputNode,
   deleteNamesSet,
+  showEditOptions,
 }: {
   node: FlattenedTreeFileNode;
   padLeft: number;
@@ -50,6 +51,7 @@ const TreeFile = ({
   handleMoveNodes: HandleMoveNodes;
   removeInputNode: RemoveInputNode;
   deleteNamesSet: DeleteNamesSet;
+  showEditOptions: boolean;
 }) => {
   const [inputState, setInputState] = useState({
     show: false,
@@ -58,7 +60,7 @@ const TreeFile = ({
   });
   const selectedFilePath = useWorkspaceStore((state) => state.selectedFilePath);
   const setSelectedFilePath = useWorkspaceStore(
-    (state) => state.setSelectedFilePath
+    (state) => state.setSelectedFilePath,
   );
   const inputRef = useRef<HTMLInputElement>(null);
   const deleteFileModalRef = useRef<HTMLDialogElement>(null);
@@ -93,7 +95,7 @@ const TreeFile = ({
         setSelectedFilePath(node.path);
       }
     },
-    [node]
+    [node],
   );
 
   const handleDragStart = useCallback(
@@ -101,7 +103,7 @@ const TreeFile = ({
       e.dataTransfer.setData("text/plain", node.path);
       e.dataTransfer.effectAllowed = "copyMove";
     },
-    [node]
+    [node],
   );
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -128,7 +130,7 @@ const TreeFile = ({
   const handleInputSubmit = (
     e:
       | React.FormEvent<HTMLFormElement>
-      | React.FocusEvent<HTMLInputElement, Element>
+      | React.FocusEvent<HTMLInputElement, Element>,
   ) => {
     e.preventDefault();
     e.stopPropagation();
@@ -202,7 +204,7 @@ const TreeFile = ({
         console.error(error);
       }
     },
-    [node.path]
+    [node.path],
   );
 
   const handleDragOver = useCallback((e: React.DragEvent<HTMLDivElement>) => {
@@ -262,22 +264,26 @@ const TreeFile = ({
           </form>
         ) : (
           <>
-            <div className="flex items-center sm:w-full gap-2 name sm:group-hover:w-[calc(100%-40px)] w-[calc(100%-40px)]">
+            <div
+              className={`flex items-center sm:w-full gap-2 name ${showEditOptions ? "sm:group-hover:w-[calc(100%-80px)]" : ""} w-[calc(100%-40px)]`}
+            >
               <img src={icon} alt="" className="w-4 h-4" />
               <p className="overflow-hidden text-ellipsis whitespace-nowrap">
                 {node.name}
               </p>
             </div>
-            <div className="flex items-center gap-2 transition-opacity duration-200 sm:opacity-0 actions-container sm:group-hover:opacity-100 sm:max-w-0 sm:group-hover:max-w-[40px] flex-nowrap max-w-[40px]">
-              <AiOutlineEdit
-                data-action="rename"
-                className="transition-transform hover:scale-[1.1] scale-100 action-icon"
-              />
-              <AiOutlineDelete
-                data-action="del-file"
-                className="transition-transform hover:scale-[1.1] scale-100 action-icon"
-              />
-            </div>
+            {showEditOptions ? (
+              <div className="flex items-center gap-2 transition-opacity duration-200 sm:opacity-0 actions-container sm:group-hover:opacity-100 sm:max-w-0 sm:group-hover:max-w-[40px] flex-nowrap max-w-[40px]">
+                <AiOutlineEdit
+                  data-action="rename"
+                  className="transition-transform hover:scale-[1.1] scale-100 action-icon"
+                />
+                <AiOutlineDelete
+                  data-action="del-file"
+                  className="transition-transform hover:scale-[1.1] scale-100 action-icon"
+                />
+              </div>
+            ) : null}
           </>
         )}
         <dialog

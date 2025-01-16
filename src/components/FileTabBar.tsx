@@ -14,15 +14,15 @@ import {
 const FileTabBar = () => {
   const selectedFilePath = useWorkspaceStore((state) => state.selectedFilePath);
   const setSelectedFilePath = useWorkspaceStore(
-    (state) => state.setSelectedFilePath
+    (state) => state.setSelectedFilePath,
   );
   const fileTabs = useWorkspaceStore((state) => state.fileTabs);
   const setFileTabs = useWorkspaceStore((state) => state.setFileTabs);
   const lastSelectedFilePaths = useWorkspaceStore(
-    (state) => state.lastSelectedFilePaths
+    (state) => state.lastSelectedFilePaths,
   );
   const setLastSelectedFilePaths = useWorkspaceStore(
-    (state) => state.setLastSelectedFilePaths
+    (state) => state.setLastSelectedFilePaths,
   );
 
   useEffect(() => {
@@ -39,7 +39,7 @@ const FileTabBar = () => {
   const removeTab = (path: string) => {
     const newTabs = fileTabs.filter((tab) => tab !== path);
     const filteredLastSelectedFilePaths = [...lastSelectedFilePaths].filter(
-      (prevPath) => prevPath !== path
+      (prevPath) => prevPath !== path,
     );
     setFileTabs(newTabs);
     if (path === selectedFilePath) {
@@ -55,7 +55,7 @@ const FileTabBar = () => {
 
   const handleTabClick = (
     e: React.MouseEvent<HTMLDivElement, MouseEvent>,
-    path: string
+    path: string,
   ) => {
     e.stopPropagation();
     const target = e.target as HTMLElement;
@@ -96,10 +96,10 @@ const FileTabBar = () => {
           const fileName = tab.slice(tab.lastIndexOf("/") + 1);
           return (
             <div
-              className={`flex items-center h-full gap-1 cursor-pointer min-w-fit max-w-60 tab border-r-[1px] border-b-[1px] border-[#2B3245] relative ${
+              className={`flex items-center h-full gap-1 cursor-pointer min-w-fit max-w-60 tab border-r-[1px] border-b-[1px] border-[#2B3245] relative text-sm  ${
                 selectedFilePath === tab
-                  ? "bg-[#1B2333] border-0 before:content-[''] before:absolute before:top-0 before:left-0 before:right-0 before:h-[1px] before:bg-[#0179F2]"
-                  : ""
+                  ? "bg-[#1B2333] border-0 before:content-[''] before:absolute before:top-0 before:left-0 before:right-0 before:h-[1px] before:bg-[#0179F2] text-[#f5f9fc]"
+                  : "text-[#c2c8cc]"
               }`}
               key={tab}
               onClick={(e) => handleTabClick(e, tab)}
@@ -113,7 +113,7 @@ const FileTabBar = () => {
                         alt="file icon"
                         className="w-4 h-4"
                       />
-                      <span className="overflow-hidden text-ellipsis whitespace-nowrap">
+                      <span className="overflow-hidden text-ellipsis whitespace-nowrap ">
                         {fileName}
                       </span>
                     </div>
@@ -146,4 +146,6 @@ const FileTabBar = () => {
     </ScrollArea>
   );
 };
-export default React.memo(FileTabBar);
+const MemoizedFileTabBar = React.memo(FileTabBar);
+MemoizedFileTabBar.displayName = "FileTabBar";
+export default MemoizedFileTabBar;

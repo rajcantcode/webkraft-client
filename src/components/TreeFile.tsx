@@ -6,6 +6,7 @@ import { Input } from "./ui/Input";
 import DeleteFileModal from "./DeleteConfirmationModal";
 import { IoMdSend } from "react-icons/io";
 import { useWorkspaceStore } from "../store";
+import { createPortal } from "react-dom";
 
 type HandleRename = (
   pni: number,
@@ -28,6 +29,8 @@ type RemoveInputNode = (pni: number) => void;
 type DeleteNamesSet = (parentIndex: number) => void;
 type HandleMoveNodes = (sourcePath: string, destinationPath: string) => void;
 
+const itemSize = window.innerWidth > 768 ? 24 : 32;
+
 const TreeFile = ({
   node,
   padLeft,
@@ -37,9 +40,9 @@ const TreeFile = ({
   handleRename,
   handleDelete,
   handleMoveNodes,
-  removeInputNode,
   deleteNamesSet,
   showEditOptions,
+  scrollRef,
 }: {
   node: FlattenedTreeFileNode;
   padLeft: number;
@@ -49,9 +52,9 @@ const TreeFile = ({
   handleRename: HandleRename;
   handleDelete: HandleDelete;
   handleMoveNodes: HandleMoveNodes;
-  removeInputNode: RemoveInputNode;
   deleteNamesSet: DeleteNamesSet;
   showEditOptions: boolean;
+  scrollRef: React.RefObject<HTMLDivElement>;
 }) => {
   const [inputState, setInputState] = useState({
     show: false,
@@ -238,7 +241,7 @@ const TreeFile = ({
       >
         {inputState.show ? (
           <form
-            className="relative w-full h-full bg-transparent"
+            className="w-full h-full bg-transparent z-10"
             onSubmit={handleInputSubmit}
             onClick={(e) => e.stopPropagation()}
           >
@@ -256,11 +259,29 @@ const TreeFile = ({
                 <IoMdSend />
               </button>
             </div>
-            {inputState.error && (
-              <p className="absolute left-0 text-xs text-white bg-[#5A1D1D] top-[calc(100%+5px)] rounded-md border border-[#BE1000] p-1 z-10">
-                {inputState.error}
-              </p>
-            )}
+            {inputState.error &&
+              scrollRef.current &&
+              createPortal(
+                <div
+                  className="err-container absolute"
+                  style={{
+                    transform: `translateY(${start + itemSize}px)`,
+                    width: `calc(100% - ${padLeft}px)`,
+                    marginLeft: `${padLeft}px`,
+                  }}
+                >
+                  <div
+                    className={`pl-[${padLeft}px] flex items-center w-[98%] justify-between text-sm rounded-md px-1 ml-0.5 h-[90%]`}
+                  >
+                    <p
+                      className={`text-xs text-white bg-[#5A1D1D] border border-[#BE1000] p-1 rounded-md w-full h-full `}
+                    >
+                      {inputState.error}
+                    </p>
+                  </div>
+                </div>,
+                scrollRef.current,
+              )}
           </form>
         ) : (
           <>

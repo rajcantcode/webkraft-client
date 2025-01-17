@@ -3,16 +3,19 @@ import { InputNode } from "../constants";
 import { Input } from "./ui/Input";
 import { IoMdSend } from "react-icons/io";
 import { checkIfNameIsValid } from "../lib/utils";
+import { createPortal } from "react-dom";
 
 type CheckIfNameIsUnique = (
   pni: number,
   depth: number,
-  newName: string
+  newName: string,
 ) => boolean;
 type HandleAddFile = (pni: number, depth: number, fileName: string) => void;
 type DeleteNamesSet = (parentIndex: number) => void;
 type RemoveInputNode = (pni: number) => void;
 type HandleAddFolder = (pni: number, depth: number, folderName: string) => void;
+
+const itemSize = window.innerWidth > 768 ? 24 : 32;
 
 const TreeInput = ({
   node,
@@ -24,6 +27,7 @@ const TreeInput = ({
   removeInputNode,
   deleteNamesSet,
   handleAddFolder,
+  scrollRef,
 }: {
   node: InputNode;
   padLeft: number;
@@ -34,6 +38,7 @@ const TreeInput = ({
   removeInputNode: RemoveInputNode;
   deleteNamesSet: DeleteNamesSet;
   handleAddFolder: HandleAddFolder;
+  scrollRef: React.RefObject<HTMLDivElement>;
 }) => {
   const [error, setError] = useState("");
   const [value, setValue] = useState(node.value);
@@ -43,7 +48,7 @@ const TreeInput = ({
     const isNameValid = checkIfNameIsValid(e.target.value);
     if (!isNameValid) {
       setError(
-        `The name ${e.target.value} is not valid. Please choose a different name.`
+        `The name ${e.target.value} is not valid. Please choose a different name.`,
       );
       setValue(e.target.value);
       return;
@@ -51,11 +56,11 @@ const TreeInput = ({
     const isNameUnique = checkIfNameIsUnique(
       node.pni,
       node.depth,
-      e.target.value
+      e.target.value,
     );
     if (!isNameUnique) {
       setError(
-        `A file or folder ${e.target.value} already exists at this location. Please choose a different name.`
+        `A file or folder ${e.target.value} already exists at this location. Please choose a different name.`,
       );
       setValue(e.target.value);
       return;
@@ -67,7 +72,7 @@ const TreeInput = ({
   const handleInputSubmit = (
     e:
       | React.FormEvent<HTMLFormElement>
-      | React.FocusEvent<HTMLInputElement, Element>
+      | React.FocusEvent<HTMLInputElement, Element>,
   ) => {
     e.stopPropagation();
     e.preventDefault();
@@ -122,11 +127,29 @@ const TreeInput = ({
             <IoMdSend />
           </button>
         </div>
-        {error ? (
-          <p className="absolute left-0 text-xs text-white bg-[#5A1D1D] top-[calc(100%+5px)] rounded-md border border-[#BE1000] p-1 z-10">
-            {error}
-          </p>
-        ) : null}
+        {error && scrollRef.current
+          ? createPortal(
+              <div
+                className="err-container absolute"
+                style={{
+                  transform: `translateY(${start + itemSize}px)`,
+                  width: `calc(100% - ${padLeft}px)`,
+                  marginLeft: `${padLeft}px`,
+                }}
+              >
+                <div
+                  className={`pl-[${padLeft}px] flex items-center w-[98%] justify-between text-sm rounded-md px-1 ml-0.5 h-[90%]`}
+                >
+                  <p
+                    className={`text-xs text-white bg-[#5A1D1D] border border-[#BE1000] p-1 rounded-md w-full h-full `}
+                  >
+                    {error}
+                  </p>
+                </div>
+              </div>,
+              scrollRef.current,
+            )
+          : null}
       </form>
     </div>
   );

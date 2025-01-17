@@ -10,6 +10,7 @@ import { checkIfNameIsValid, getFolderIcon } from "../lib/utils";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Input } from "./ui/Input";
 import DeleteFolderModal from "./DeleteConfirmationModal";
+import { createPortal } from "react-dom";
 
 type HandleRename = (
   pni: number,
@@ -40,16 +41,15 @@ type InsertInputNode = (
   operation: "add-file" | "add-folder",
   depth: number,
 ) => void;
-type RemoveInputNode = (pni: number) => void;
 type DeleteNamesSet = (parentIndex: number) => void;
 type ExpandNode = (path: string) => void;
 type CloseNode = (path: string) => void;
-type GetButtonHeight = (path: string, childCount: number) => number;
+
+const itemSize = window.innerWidth > 768 ? 24 : 32;
 
 const TreeFolder = ({
   node,
   padLeft,
-  getButtonHeight,
   height,
   start,
   handleRename,
@@ -60,14 +60,13 @@ const TreeFolder = ({
   insertInputNode,
   expandNode,
   closeNode,
-  removeInputNode,
   deleteNamesSet,
   isNodeModulesChildrenReceived,
   showEditOptions,
+  scrollRef,
 }: {
   node: FlattenedTreeFolderNode;
   padLeft: number;
-  getButtonHeight: GetButtonHeight;
   height: number;
   start: number;
   handleRename: HandleRename;
@@ -78,12 +77,12 @@ const TreeFolder = ({
   insertInputNode: InsertInputNode;
   expandNode: ExpandNode;
   closeNode: CloseNode;
-  removeInputNode: RemoveInputNode;
   deleteNamesSet: DeleteNamesSet;
   isNodeModulesChildrenReceived: React.MutableRefObject<{
     [path: string]: boolean;
   }>;
   showEditOptions: boolean;
+  scrollRef: React.RefObject<HTMLDivElement>;
 }) => {
   const { isExpanded: isOpen } = node;
   const [inputState, setInputState] = useState<InputState>({
@@ -387,11 +386,29 @@ const TreeFolder = ({
                   <IoMdSend />
                 </button>
               </div>
-              {inputState.error ? (
-                <p className="absolute left-0 text-xs text-white bg-[#5A1D1D] top-[calc(100%+5px)] rounded-md border border-[#BE1000] p-1 z-50">
-                  {inputState.error}
-                </p>
-              ) : null}
+              {inputState.error && scrollRef.current
+                ? createPortal(
+                    <div
+                      className="err-container absolute"
+                      style={{
+                        transform: `translateY(${start + itemSize}px)`,
+                        width: `calc(100% - ${padLeft}px)`,
+                        marginLeft: `${padLeft}px`,
+                      }}
+                    >
+                      <div
+                        className={`pl-[${padLeft}px] flex items-center w-[98%] justify-between text-sm rounded-md px-1 ml-0.5 h-[90%]`}
+                      >
+                        <p
+                          className={`text-xs text-white bg-[#5A1D1D] border border-[#BE1000] p-1 rounded-md w-full h-full `}
+                        >
+                          {inputState.error}
+                        </p>
+                      </div>
+                    </div>,
+                    scrollRef.current,
+                  )
+                : null}
             </form>
           ) : (
             <>

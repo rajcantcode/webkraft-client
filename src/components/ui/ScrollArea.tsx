@@ -14,7 +14,7 @@ const ScrollArea = React.forwardRef<
     <ScrollAreaPrimitive.Viewport
       // Adding ref to the viewport makes virtualization on fileTree work. Idk why
       ref={ref}
-      className="h-full w-full rounded-[inherit]"
+      className="h-full w-full rounded-[inherit] relative"
     >
       {children}
     </ScrollAreaPrimitive.Viewport>

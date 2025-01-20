@@ -50,18 +50,11 @@ const BreadCrumbWrapper = React.memo(
     breadcrumbTree: Symbol | null;
   }) => {
     const [symbolsToDisplay, setSymbolsToDisplay] = useState<SymbolsToDisplay>(
-      {}
+      {},
     );
     const [openedDropDown, setOpenedDropDown] = useState<string>("");
     const [highlightedSymbol, setHighlightedSymbol] =
       useState<HighlightedSymbol>({});
-
-    // useEffect(() => {
-    //   const splittedPath = filePath.split("/");
-    //   // Remove first element from splttedPath array
-    //   splittedPath.shift();
-
-    // }, [fileStructure])
 
     const getSymbolsToDisplay = useCallback(
       (
@@ -69,7 +62,7 @@ const BreadCrumbWrapper = React.memo(
         symbolsToDisplay: SymbolsToDisplay,
         highlightedSymbol: HighlightedSymbol,
         cursorPos: number,
-        depth = 1
+        depth = 1,
       ) => {
         symbolsToDisplay[depth] = breadcrumbTree.childItems;
         for (const child of breadcrumbTree.childItems) {
@@ -80,14 +73,14 @@ const BreadCrumbWrapper = React.memo(
               symbolsToDisplay,
               highlightedSymbol,
               cursorPos,
-              depth + 1
+              depth + 1,
             );
             // break the loop, cause any other symbol will be inside this symbol
             break;
           }
         }
       },
-      []
+      [],
     );
     useEffect(() => {
       if (!breadcrumbTree) {
@@ -104,7 +97,7 @@ const BreadCrumbWrapper = React.memo(
 
     const symbolsToDisplayKeys = useMemo(
       () => Object.keys(symbolsToDisplay),
-      [symbolsToDisplay]
+      [symbolsToDisplay],
     );
 
     return (
@@ -148,7 +141,7 @@ const BreadCrumbWrapper = React.memo(
                           </DropdownMenuTrigger>
                           <DropdownMenuContent
                             align="start"
-                            className="max-h-[400px] min-w-[165px] max-w-[300px] border-[#4E5569] px-0 rounded-md bg-[#0E1525]"
+                            className="max-h-[400px] min-w-[165px] max-w-[300px] border-[#4E5569] px-0 rounded-md bg-[#0E1525] overflow-auto"
                           >
                             <DropdownMenuItem className="flex p-0 overflow-hidden">
                               <FileTree
@@ -275,7 +268,7 @@ const BreadCrumbWrapper = React.memo(
         <ScrollBar orientation="horizontal" />
       </ScrollArea>
     );
-  }
+  },
 );
 
 BreadCrumbWrapper.displayName = "BreadCrumbWrapper";

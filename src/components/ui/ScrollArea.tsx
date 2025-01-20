@@ -10,6 +10,7 @@ const ScrollArea = React.forwardRef<
   <ScrollAreaPrimitive.Root
     className={cn("relative overflow-auto", className)}
     {...props}
+    // ref={ref}
   >
     <ScrollAreaPrimitive.Viewport
       // Adding ref to the viewport makes virtualization on fileTree work. Idk why

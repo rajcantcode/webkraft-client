@@ -31,6 +31,7 @@ import {
 } from "../helpers.js";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import TreeInput from "./TreeInput.js";
+import { createPortal } from "react-dom";
 
 type ExpandedChildrenLength = { path: string; length: number };
 type DepthAndStartInfo = {
@@ -52,7 +53,7 @@ const flattenTree = (
   parentIndex: number = -1,
   flattenedNodes: FlattenedTree = [],
   expandedChildrenLength: ExpandedChildrenLength[] = [],
-  expandedNodes: ExpandedNode = {}
+  expandedNodes: ExpandedNode = {},
 ): {
   flattenedTree: FlattenedTree;
   nodeExpandedState: NodeExpandedState;
@@ -117,7 +118,7 @@ const flattenTree = (
         currentIndex,
         flattenedNodes,
         expandedChildrenLength,
-        expandedNodes
+        expandedNodes,
       );
     }
   }
@@ -150,7 +151,7 @@ const FileTree = ({
   const selectedFilePath = useWorkspaceStore((state) => state.selectedFilePath);
   const isNodeModulesChildrenReceived = useRef<{ [path: string]: boolean }>({});
   const [nodeExpandedState, setNodeExpandedState] = useState<NodeExpandedState>(
-    () => (startPath ? {} : fileTree ? { [fileTree[0].path]: true } : {})
+    () => (startPath ? {} : fileTree ? { [fileTree[0].path]: true } : {}),
   );
 
   const expandedChildrenLengthRef = useRef<ExpandedChildrenLength[]>([]);
@@ -165,7 +166,7 @@ const FileTree = ({
             nodeExpandedState,
             startPath,
             true,
-            depthToSubtractRef
+            depthToSubtractRef,
           )
         : flattenTree(fileTree, nodeExpandedState);
       expandedChildrenLengthRef.current = expandedChildrenLength;
@@ -177,8 +178,10 @@ const FileTree = ({
   });
   const scrollRef = useRef<HTMLDivElement>(null);
   const pathToFirstLevelChildrenNames = useRef<{ [path: string]: Set<string> }>(
-    {}
+    {},
   );
+  const visibleNodesRef = useRef<Set<string>>(new Set<string>());
+  const [pathToScroll, setPathToScroll] = useState<string | null>(null);
 
   const virtualizer = useVirtualizer({
     count: flattenedTree ? flattenedTree.length : 0,
@@ -187,8 +190,27 @@ const FileTree = ({
     overscan: 5,
   });
 
+  const scrollToPath = useCallback(
+    (path: string) => {
+      const index = flattenedTree?.findIndex((node) => node.path === path);
+      if (index && index !== -1) {
+        virtualizer.scrollToIndex(index, {
+          align: "center",
+          behavior: "smooth",
+        });
+      }
+    },
+    [flattenedTree, virtualizer],
+  );
+
   useEffect(() => {
-    // This effect here is to expand the nodes which are not expanded when the selectedFilePath changes
+    if (pathToScroll) {
+      scrollToPath(pathToScroll);
+      setPathToScroll(null);
+    }
+  }, [pathToScroll]);
+  useEffect(() => {
+    // This effect here is to expand the nodes which are not expanded when the selectedFilePath changes, and to scroll to that path in the fileTree if it is not visible
     if (!selectedFilePath || startPath) return;
     const splitPaths = selectedFilePath.split("/");
     const pathsArray: string[] = [];
@@ -202,8 +224,14 @@ const FileTree = ({
         pathsArray.push(pathToCheck);
       }
     }
-
-    expandNode(pathsArray);
+    if (pathsArray.length !== 0) {
+      expandNode(pathsArray);
+      setPathToScroll(selectedFilePath);
+    } else {
+      if (!visibleNodesRef.current.has(selectedFilePath)) {
+        scrollToPath(selectedFilePath);
+      }
+    }
   }, [selectedFilePath, startPath]);
 
   useEffect(() => {
@@ -268,7 +296,7 @@ const FileTree = ({
       const parentNode = findNode(fileTreeCopy, parentPath);
       if (!parentNode || parentNode.type === "file") return;
       parentNode.children = parentNode.children.filter(
-        (node) => node.path !== path
+        (node) => node.path !== path,
       );
       setFileTree(fileTreeCopy);
       const { flattenedTree, expandedChildrenLength, expandedNodes } = startPath
@@ -324,10 +352,10 @@ const FileTree = ({
       const parentNode = findNode(fileTreeCopy, parentPath);
       if (!parentNode || parentNode.type === "file") return;
       const nodeToBeDeleted = parentNode.children.find(
-        (node) => node.path === path
+        (node) => node.path === path,
       );
       parentNode.children = parentNode.children.filter(
-        (node) => node.path !== path
+        (node) => node.path !== path,
       );
       setFileTree(fileTreeCopy);
       const { flattenedTree, expandedChildrenLength, expandedNodes } = startPath
@@ -344,7 +372,7 @@ const FileTree = ({
         nodeToBeDeleted!,
         deletedPaths,
         filesContent,
-        null
+        null,
       );
       setFilesContent({ ...filesContent });
       deleteFilePathsInFileTabBar(undefined, deletedPaths);
@@ -423,7 +451,7 @@ const FileTree = ({
               delete filesContent[node.path];
               fileTabsCopy.splice(fileTabs.indexOf(node.path), 1);
               lastSelectedFilePathsCopy = lastSelectedFilePathsCopy.filter(
-                (path) => path !== node.path
+                (path) => path !== node.path,
               );
             }
           });
@@ -511,7 +539,7 @@ const FileTree = ({
       }
       return true;
     },
-    [flattenedTree, startPath]
+    [flattenedTree, startPath],
   );
 
   const deleteNamesSet = useCallback(
@@ -521,7 +549,7 @@ const FileTree = ({
         flattenedTree[parentIndex].path
       ];
     },
-    [flattenedTree]
+    [flattenedTree],
   );
 
   const insertInputNode = useCallback(
@@ -541,7 +569,7 @@ const FileTree = ({
       flattenedTreeCopy.splice(index + 1, 0, inputNode);
       setFlattenedTree(flattenedTreeCopy);
     },
-    [flattenedTree, setFlattenedTree]
+    [flattenedTree, setFlattenedTree],
   );
 
   const removeInputNode = useCallback(
@@ -553,7 +581,7 @@ const FileTree = ({
       flattenedTreeCopy.splice(pni + 1, 1);
       setFlattenedTree(flattenedTreeCopy);
     },
-    [flattenedTree, setFlattenedTree]
+    [flattenedTree, setFlattenedTree],
   );
 
   const expandNode = useCallback(
@@ -571,7 +599,7 @@ const FileTree = ({
               await loadFilesOfNodeModulesFolder(
                 node,
                 fileFetchStatus,
-                socket?.io.opts.host!
+                socket?.io.opts.host!,
               );
             } else {
               await loadFilesOfFolder(node, fileFetchStatus);
@@ -580,27 +608,7 @@ const FileTree = ({
             console.error(`Error fetching files of folder ${node.path}`, error);
           }
         }
-        // node.isExpanded = true;
-        // setNode
       }
-      // const node = findNode(fileTreeCopy, path);
-      // if (!node || node.type === "file") return;
-      // if (node.children.length > 0) {
-      //   try {
-      //     if (node.path.includes("node_modules")) {
-      //       await loadFilesOfNodeModulesFolder(
-      //         node,
-      //         fileFetchStatus,
-      //         socket?.io.opts.host!
-      //       );
-      //     } else {
-      //       await loadFilesOfFolder(node, fileFetchStatus);
-      //     }
-      //   } catch (error) {
-      //     console.error(`Error fetching files of folder ${node.path}`, error);
-      //   }
-      // }
-      // node.isExpanded = true;
       const nodeExpandedStateCopy = { ...nodeExpandedState };
       for (const path of inputPaths) {
         nodeExpandedStateCopy[path] = true;
@@ -627,7 +635,7 @@ const FileTree = ({
       socket,
       fileFetchStatus,
       startPath,
-    ]
+    ],
   );
 
   const closeNode = useCallback(
@@ -653,7 +661,7 @@ const FileTree = ({
       setFlattenedTree(flattenedTree);
       setNodeExpandedState(newNodeExpandedState);
     },
-    [fileTree, setFileTree, setFlattenedTree, nodeExpandedState, startPath]
+    [fileTree, setFileTree, setFlattenedTree, nodeExpandedState, startPath],
   );
 
   const handleRename = (
@@ -661,7 +669,7 @@ const FileTree = ({
     depth: number,
     path: string,
     newName: string,
-    type: "file" | "folder"
+    type: "file" | "folder",
   ) => {
     if (!fileTree || !flattenedTree) {
       return;
@@ -672,7 +680,7 @@ const FileTree = ({
       deleteNamesSet(pni);
       throw new Error(
         `The name ${newName} is not valid. Please choose a different name.`,
-        { cause: "invalid-name" }
+        { cause: "invalid-name" },
       );
     }
     const isNameUnique = checkIfNameIsUnique(pni, depth, newName);
@@ -680,7 +688,7 @@ const FileTree = ({
       deleteNamesSet(pni);
       throw new Error(
         `A file or folder ${newName} already exists at this location. Please choose a different name.`,
-        { cause: "duplicate-name" }
+        { cause: "duplicate-name" },
       );
     }
     deleteNamesSet(pni);
@@ -742,7 +750,7 @@ const FileTree = ({
       { path: oldPath, newPath: node.path },
       (
         error: Error | null,
-        data: { success: boolean; oldPath: string; newPath: string }
+        data: { success: boolean; oldPath: string; newPath: string },
       ) => {
         const { oldPath, newPath } = data;
         if (error) {
@@ -782,7 +790,7 @@ const FileTree = ({
           console.error("Error renaming file/folder", error);
           // ToDo -> Display a toast message
         }
-      }
+      },
     );
   };
 
@@ -812,7 +820,7 @@ const FileTree = ({
           loadFilesOfNodeModulesFolder(
             parentNode,
             fileFetchStatus,
-            socket?.io.opts.host!
+            socket?.io.opts.host!,
           );
           setFileTree(fileTreeCopy);
           const {
@@ -827,10 +835,10 @@ const FileTree = ({
           expandedNodesRef.current = expandedNodes;
           setFlattenedTree(flattenedTree);
           setNodeExpandedState(newNodeExpandedState);
-        }
+        },
       );
     },
-    [socket, fileTree, nodeExpandedState, startPath]
+    [socket, fileTree, nodeExpandedState, startPath],
   );
   const handleDelete = useCallback(
     (path: string, pni: number, type: "file" | "folder") => {
@@ -845,7 +853,7 @@ const FileTree = ({
       const parentNode = findNode(fileTreeCopy, parentPath);
       if (!parentNode || parentNode.type === "file") return;
       const nodeToBeDeleted = parentNode.children.find(
-        (node) => node.path === path
+        (node) => node.path === path,
       );
 
       const { filesContent } = useWorkspaceStore.getState();
@@ -868,7 +876,7 @@ const FileTree = ({
           nodeToBeDeleted!,
           deletedPaths,
           filesContent,
-          deletedFileContent
+          deletedFileContent,
         );
         // setDeletedPaths(deletedPaths);
         setFilesContent({ ...filesContent });
@@ -877,7 +885,7 @@ const FileTree = ({
 
       // filter out the node to be deleted
       parentNode.children = parentNode.children.filter(
-        (node) => node.path !== path
+        (node) => node.path !== path,
       );
 
       setFileTree(fileTreeCopy);
@@ -920,10 +928,10 @@ const FileTree = ({
 
             // ToDo -> Display a toast message
           }
-        }
+        },
       );
     },
-    [fileTree, nodeExpandedState, flattenedTree]
+    [fileTree, nodeExpandedState, flattenedTree],
   );
 
   const handleAddFile = useCallback(
@@ -937,14 +945,14 @@ const FileTree = ({
         removeInputNode(pni);
         deleteNamesSet(pni);
         throw new Error(
-          `The name ${fileName} is not valid. Please choose a different name.`
+          `The name ${fileName} is not valid. Please choose a different name.`,
         );
       }
       if (!isNameUnique) {
         removeInputNode(pni);
         deleteNamesSet(pni);
         throw new Error(
-          `A file or folder ${fileName} already exists at this location. Please choose a different name.`
+          `A file or folder ${fileName} already exists at this location. Please choose a different name.`,
         );
       }
       deleteNamesSet(pni);
@@ -991,7 +999,7 @@ const FileTree = ({
             // Revert the changes
             const pathToDelete = `${parentNode.path}/${fileName}`;
             parentNode.children = parentNode.children.filter(
-              (node) => node.path !== pathToDelete
+              (node) => node.path !== pathToDelete,
             );
             // const fileTreeCopy = structuredClone(fileTree);
             const fileTreeCopy = [...fileTree];
@@ -1011,10 +1019,10 @@ const FileTree = ({
             console.error("Error adding file", error);
             // ToDo -> Display a toast message
           }
-        }
+        },
       );
     },
-    [fileTree, nodeExpandedState, startPath]
+    [fileTree, nodeExpandedState, startPath],
   );
 
   const handleAddFolder = useCallback(
@@ -1026,14 +1034,14 @@ const FileTree = ({
       const isNameValid = checkIfNameIsValid(folderName);
       if (!isNameValid) {
         throw new Error(
-          `The name ${folderName} is not valid. Please choose a different name.`
+          `The name ${folderName} is not valid. Please choose a different name.`,
         );
       }
 
       const isNameUnique = checkIfNameIsUnique(pni, depth, folderName);
       if (!isNameUnique) {
         throw new Error(
-          `A file or folder ${folderName} already exists at this location. Please choose a different name.`
+          `A file or folder ${folderName} already exists at this location. Please choose a different name.`,
         );
       }
       deleteNamesSet(pni);
@@ -1071,7 +1079,7 @@ const FileTree = ({
             // Revert the changes
             const pathToDelete = pathToAdd;
             parentNode.children = parentNode.children.filter(
-              (node) => node.path !== pathToDelete
+              (node) => node.path !== pathToDelete,
             );
             // const fileTreeCopy = structuredClone(fileTree);
             const fileTreeCopy = [...fileTree];
@@ -1089,10 +1097,10 @@ const FileTree = ({
             console.error("Error adding folder", error);
             // ToDo -> Display a toast message
           }
-        }
+        },
       );
     },
-    [fileTree, nodeExpandedState, flattenedTree, socket, startPath]
+    [fileTree, nodeExpandedState, flattenedTree, socket, startPath],
   );
 
   const handleMoveNodes = useCallback(
@@ -1120,13 +1128,13 @@ const FileTree = ({
         { sourcePath, destPath },
         (
           error: Error | null,
-          data: { success: boolean; sourcePath: string; destPath: string }
+          data: { success: boolean; sourcePath: string; destPath: string },
         ) => {
           if (error) {
             console.error("Error moving files");
             const newFileStructure = moveNodes(
               destPath + "/" + sourceFileName,
-              sourcePath.split("/").slice(0, -1).join("/")
+              sourcePath.split("/").slice(0, -1).join("/"),
             );
             if (!newFileStructure) return;
             setFileTree(newFileStructure);
@@ -1139,20 +1147,20 @@ const FileTree = ({
                   newFileStructure,
                   nodeExpandedState,
                   startPath,
-                  true
+                  true,
                 )
               : flattenTree(newFileStructure, nodeExpandedState);
             expandedChildrenLengthRef.current = expandedChildrenLength;
             expandedNodesRef.current = expandedNodes;
             setFlattenedTree(newFlattenedTree);
           }
-        }
+        },
       );
     },
-    [nodeExpandedState]
+    [nodeExpandedState],
   );
 
-  const getButtonHeight = (path: string, childCount: number) => {
+  const getButtonHeight = useCallback((path: string, childCount: number) => {
     let totalChildrenToCover = 0;
     expandedChildrenLengthRef.current.forEach((node) => {
       if (node.path.startsWith(path) && node.path !== path) {
@@ -1161,19 +1169,25 @@ const FileTree = ({
     });
     // need to change based on screen size
     return (totalChildrenToCover + childCount) * itemSize;
-  };
+  }, []);
 
   const handleRightClick = (e: React.MouseEvent<HTMLDivElement>) => {
     // e.stopPropagation();
     // console.log(e.target.closest());
     // console.log(e.currentTarget);
   };
+
+  const getFolderPath = useCallback((filePath: string) => {
+    const lastSlashIndex = filePath.lastIndexOf("/");
+    return lastSlashIndex === -1 ? filePath : filePath.slice(0, lastSlashIndex);
+  }, []);
+
   if (!fileTree || !flattenedTree) {
     return null;
   }
   return (
     <ScrollArea
-      className="w-full h-full overflow-auto bg-[#0E1525]"
+      className="w-full h-full overflow-auto bg-[#0E1525] root-scroll"
       ref={scrollRef}
     >
       <div
@@ -1181,21 +1195,33 @@ const FileTree = ({
         onContextMenu={handleRightClick}
         style={{ height: `${virtualizer.getTotalSize()}px` }}
       >
-        {virtualizer.getVirtualItems().map((virtualRow) => {
+        {virtualizer.getVirtualItems().map((virtualRow, i) => {
+          if (i === 0) visibleNodesRef.current.clear();
           const node = flattenedTree[virtualRow.index];
+
+          const isInOverscan =
+            virtualRow.start < scrollRef.current!.scrollTop ||
+            virtualRow.end >
+              scrollRef.current!.scrollTop + scrollRef.current!.clientHeight;
+          if (!isInOverscan) {
+            visibleNodesRef.current.add(node.path);
+          }
+
           if (node.type === "folder") {
             const { depth, isExpanded, path } = node;
             const start = virtualRow.start;
+
             if (isExpanded) {
               expandedNodesRef.current[path].start = start;
             }
+
             return (
               <TreeFolder
                 node={node}
                 padLeft={(depth - depthToSubtractRef.current) * padLeft}
                 key={virtualRow.index}
                 height={virtualRow.size}
-                start={start}
+                start={virtualRow.start}
                 handleRename={handleRename}
                 handleDelete={handleDelete}
                 handleMoveNodes={handleMoveNodes}
@@ -1249,11 +1275,19 @@ const FileTree = ({
         })}
         {Object.keys(expandedNodesRef.current).map((path) => {
           const { start, depth, childCount } = expandedNodesRef.current[path];
+
+          if (
+            start === 0 &&
+            path === getFolderPath(selectedFilePath) &&
+            flattenedTree[0].path !== path
+          ) {
+            return null;
+          }
           const padding = (depth - depthToSubtractRef.current) * padLeft;
           const buttonHeight = getButtonHeight(path, childCount);
           return (
             <button
-              className="absolute top-0 left-0 w-[3px] group"
+              className={`absolute top-0 left-0 w-[3px] group ${path}`}
               key={path}
               style={{
                 height: `${buttonHeight}px`,

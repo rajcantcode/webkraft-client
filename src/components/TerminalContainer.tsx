@@ -298,7 +298,7 @@ const TerminalContainer = ({
                 );
               })}
             </ResizablePanel>
-            <ResizableHandle withHandle={true} />
+            <ResizableHandle withHandle={true} direction="horizontal" />
             <ResizablePanel
               defaultSize={20}
               minSize={10}

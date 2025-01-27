@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import Editor from "../components/Editor";
 import FileTree from "../components/FileTree";
+import NoFileSelected from "../components/NoFileSelected";
 import {
   ResizableHandle,
   ResizablePanel,
@@ -15,6 +16,7 @@ import {
 } from "../helpers";
 import debounce from "lodash.debounce";
 import { useLifecycles } from "react-use";
+
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useParams } from "react-router-dom";
 import { io, ManagerOptions, Socket, SocketOptions } from "socket.io-client";
@@ -53,6 +55,7 @@ const Workspace = () => {
   const clearWorkspaceData = useWorkspaceStore(
     (state) => state.clearWorkspaceData,
   );
+  const editorIds = useWorkspaceStore((state) => state.editorIds);
   const setFileStructure = useWorkspaceStore((state) => state.setFileStructure);
   const [fileStructureReceived, setFileStructureReceived] = useState(false);
   const [terminalContainerSize, setTerminalContainerSize] = useState(25);
@@ -260,16 +263,40 @@ const Workspace = () => {
               socket={socket}
             />
           </ResizablePanel>
-          <ResizableHandle withHandle={true} />
+          <ResizableHandle withHandle={true} direction="horizontal" />
           <ResizablePanel defaultSize={80} order={2}>
             <ResizablePanelGroup direction="vertical">
               <ResizablePanel defaultSize={75} order={1}>
-                <Editor
-                  fileFetchStatus={fileFetchStatus.current}
-                  socket={socket}
-                />
+                {editorIds.length > 0 ? (
+                  <ResizablePanelGroup direction="horizontal">
+                    {editorIds.map((id, i) => (
+                      <React.Fragment key={id}>
+                        <ResizablePanel
+                          defaultSize={100 / editorIds.length}
+                          order={i + 1}
+                          key={id}
+                          id={id}
+                        >
+                          <Editor
+                            fileFetchStatus={fileFetchStatus.current}
+                            socket={socket}
+                            editorId={id}
+                          />
+                        </ResizablePanel>
+                        {i + 1 !== editorIds.length && (
+                          <ResizableHandle
+                            withHandle={true}
+                            direction="horizontal"
+                          />
+                        )}
+                      </React.Fragment>
+                    ))}
+                  </ResizablePanelGroup>
+                ) : (
+                  <NoFileSelected />
+                )}
               </ResizablePanel>
-              <ResizableHandle withHandle={true} />
+              <ResizableHandle withHandle={true} direction="vertical" />
               <ResizablePanel
                 defaultSize={25}
                 order={2}

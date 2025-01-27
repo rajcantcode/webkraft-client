@@ -71,7 +71,9 @@ const ResizableTerminalPane = ({
           activePaneId={activePaneId}
         />
       </ResizablePanel>
-      {setHandle ? <ResizableHandle /> : null}
+      {setHandle ? (
+        <ResizableHandle direction="horizontal" withHandle={true} />
+      ) : null}
     </>
   );
 };

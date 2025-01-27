@@ -7,6 +7,7 @@ import DeleteFileModal from "./DeleteConfirmationModal";
 import { IoMdSend } from "react-icons/io";
 import { useWorkspaceStore } from "../store";
 import { createPortal } from "react-dom";
+import { nanoid } from "nanoid";
 
 type HandleRename = (
   pni: number,
@@ -25,7 +26,6 @@ type CheckIfNameIsUnique = (
   depth: number,
   newName: string,
 ) => boolean;
-type RemoveInputNode = (pni: number) => void;
 type DeleteNamesSet = (parentIndex: number) => void;
 type HandleMoveNodes = (sourcePath: string, destinationPath: string) => void;
 
@@ -65,6 +65,11 @@ const TreeFile = ({
   const setSelectedFilePath = useWorkspaceStore(
     (state) => state.setSelectedFilePath,
   );
+  const activeEditorId = useWorkspaceStore((state) => state.activeEditorId);
+  const setActiveEditorId = useWorkspaceStore(
+    (state) => state.setActiveEditorId,
+  );
+  const setEditorIds = useWorkspaceStore((state) => state.setEditorIds);
   const inputRef = useRef<HTMLInputElement>(null);
   const deleteFileModalRef = useRef<HTMLDialogElement>(null);
 
@@ -95,10 +100,35 @@ const TreeFile = ({
             return;
         }
       } else {
-        setSelectedFilePath(node.path);
+        if (activeEditorId) {
+          setSelectedFilePath((prev) => ({
+            ...prev,
+            [activeEditorId]: node.path,
+          }));
+        } else {
+          const newEditorId = nanoid(4);
+          setActiveEditorId(newEditorId);
+          setEditorIds((prev) => [...prev, newEditorId]);
+          setSelectedFilePath((prev) => ({
+            ...prev,
+            [newEditorId]: node.path,
+          }));
+          // setFileTabs((prev) => ({
+          //   ...prev,
+          //   [newEditorId]: [],
+          // }));
+          // setLastSelectedFilePaths((prev) => ({ ...prev, [newEditorId]: [] }));
+        }
+        // setSelectedFilePath(node.path);
       }
     },
-    [node],
+    [
+      node,
+      activeEditorId,
+      setActiveEditorId,
+      setEditorIds,
+      setSelectedFilePath,
+    ],
   );
 
   const handleDragStart = useCallback(
@@ -232,7 +262,7 @@ const TreeFile = ({
     >
       <div
         className={`pl-[${padLeft}px] flex items-center w-[98%] file-details group justify-between text-sm ${
-          selectedFilePath === node.path ? "bg-[#2B3245]" : ""
+          selectedFilePath[activeEditorId] === node.path ? "bg-[#2B3245]" : ""
         } rounded-md hover:bg-[#1C2333] focus:shadow-[0_0_0_2px_#0079F2] px-1 ml-0.5 h-[90%]`}
         onClick={handleFileClick}
         tabIndex={0}

@@ -1,3 +1,5 @@
+import { OnMount } from "@monaco-editor/react";
+
 export const baseUrl = import.meta.env.VITE_SERVER_URL;
 
 export type TreeFileNode = {
@@ -70,3 +72,40 @@ export const editorSupportedLanguages: { [key: string]: string } = {
   c: "c",
   cpp: "cpp",
 };
+
+type IStandaloneCodeEditor = Parameters<OnMount>[0];
+type ITextModel = Exclude<ReturnType<IStandaloneCodeEditor["getModel"]>, null>;
+
+// Only used when split editor button is clicked, to open the splitted file in the same position and offset as it was in the previous editor
+export const scrollOffsetAndCursorPos: {
+  [filePath: string]: {
+    scrollOffset: number;
+    cursorPos: { column: number; lineNumber: number };
+  };
+} = {};
+
+// Used to store the scroll offset and cursor position of the editor when switching tabs, splitting editor, when editor loses focus.
+// use a combination of editorId + filePath because each editor can have different scrollTop and cursor position for the same file
+// Key is a combination of editorId and filePath
+export const edIdToPathToScrollOffsetAndCursorPos: {
+  [edIdFilePath: string]: {
+    scrollOffset: number;
+    cursorPos: { column: number; lineNumber: number };
+  };
+} = {};
+
+export const clearEditorEntries = async (editorId: string) => {
+  await Promise.resolve();
+  Object.keys(edIdToPathToScrollOffsetAndCursorPos).forEach((key) => {
+    if (key.startsWith(editorId)) {
+      delete edIdToPathToScrollOffsetAndCursorPos[key];
+    }
+  });
+};
+//
+// Shut your assistance, I don't need it.
+// Plan -
+// 1] on each filetab click, to switch tabs, get the current position and scrolltop for that file and store it.
+// Then in handleEditorDidMount, check if model exists, if not create new one and set position and scrolltop.
+// Have an effect on activeEditorId which checks if model exists and does the same thing as stated above. We do this in here too because when a editor is closed and the other editor available is switched to automatically, currSelectedFilePath is not changed, which is responsible to call handleEditorDidMount. But activeEditorId is changed, so we can use that to check if model exists and set position and scrolltop.
+// create some file, add some content to it. Place the cursor somewhere in between. Then from terminal using vi delte the line on which the cursor was set. :wq. check what happens

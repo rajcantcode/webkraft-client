@@ -149,6 +149,10 @@ const FileTree = ({
   const setFileTree = useWorkspaceStore((state) => state.setFileStructure);
   const setFilesContent = useWorkspaceStore((state) => state.setFilesContent);
   const selectedFilePath = useWorkspaceStore((state) => state.selectedFilePath);
+  const activeEditorId = useWorkspaceStore((state) => state.activeEditorId);
+  const [currSelectedFilePath, setCurrSelectedFilePath] = useState<string>(
+    selectedFilePath[activeEditorId],
+  );
   const isNodeModulesChildrenReceived = useRef<{ [path: string]: boolean }>({});
   const [nodeExpandedState, setNodeExpandedState] = useState<NodeExpandedState>(
     () => (startPath ? {} : fileTree ? { [fileTree[0].path]: true } : {}),
@@ -183,6 +187,10 @@ const FileTree = ({
   const visibleNodesRef = useRef<Set<string>>(new Set<string>());
   const [pathToScroll, setPathToScroll] = useState<string | null>(null);
 
+  useEffect(() => {
+    setCurrSelectedFilePath(selectedFilePath[activeEditorId]);
+  }, [selectedFilePath, activeEditorId, setCurrSelectedFilePath]);
+
   const virtualizer = useVirtualizer({
     count: flattenedTree ? flattenedTree.length : 0,
     getScrollElement: () => scrollRef.current,
@@ -211,8 +219,8 @@ const FileTree = ({
   }, [pathToScroll]);
   useEffect(() => {
     // This effect here is to expand the nodes which are not expanded when the selectedFilePath changes, and to scroll to that path in the fileTree if it is not visible
-    if (!selectedFilePath || startPath) return;
-    const splitPaths = selectedFilePath.split("/");
+    if (!currSelectedFilePath || startPath) return;
+    const splitPaths = currSelectedFilePath.split("/");
     const pathsArray: string[] = [];
     if (!expandedNodesRef.current[splitPaths[0]]) {
       pathsArray.push(splitPaths[0]);
@@ -226,13 +234,13 @@ const FileTree = ({
     }
     if (pathsArray.length !== 0) {
       expandNode(pathsArray);
-      setPathToScroll(selectedFilePath);
+      setPathToScroll(currSelectedFilePath);
     } else {
-      if (!visibleNodesRef.current.has(selectedFilePath)) {
-        scrollToPath(selectedFilePath);
+      if (!visibleNodesRef.current.has(currSelectedFilePath)) {
+        scrollToPath(currSelectedFilePath);
       }
     }
-  }, [selectedFilePath, startPath]);
+  }, [currSelectedFilePath, startPath]);
 
   useEffect(() => {
     if (!socket) return;
@@ -422,8 +430,10 @@ const FileTree = ({
         lastSelectedFilePaths,
         setLastSelectedFilePaths,
       } = useWorkspaceStore.getState();
-      const fileTabsCopy = [...fileTabs];
-      let lastSelectedFilePathsCopy = [...lastSelectedFilePaths];
+      const fileTabsCopy = [...fileTabs[activeEditorId]];
+      let lastSelectedFilePathsCopy = [
+        ...lastSelectedFilePaths[activeEditorId],
+      ];
       folderPaths.forEach((path) => {
         const parentPath = path.split("/").slice(0, -1).join("/");
         if (!parentNodes[parentPath]) {
@@ -449,7 +459,10 @@ const FileTree = ({
           deletedNode.children.forEach((node) => {
             if (node.type === "file") {
               delete filesContent[node.path];
-              fileTabsCopy.splice(fileTabs.indexOf(node.path), 1);
+              fileTabsCopy.splice(
+                fileTabs[activeEditorId].indexOf(node.path),
+                1,
+              );
               lastSelectedFilePathsCopy = lastSelectedFilePathsCopy.filter(
                 (path) => path !== node.path,
               );
@@ -468,8 +481,11 @@ const FileTree = ({
       expandedChildrenLengthRef.current = expandedChildrenLength;
       expandedNodesRef.current = expandedNodes;
       setFilesContent({ ...filesContent });
-      setFileTabs(fileTabsCopy);
-      setLastSelectedFilePaths(lastSelectedFilePathsCopy);
+      setFileTabs((prev) => ({ ...prev, [activeEditorId]: fileTabsCopy }));
+      setLastSelectedFilePaths((prev) => ({
+        ...prev,
+        [activeEditorId]: lastSelectedFilePathsCopy,
+      }));
     };
 
     socket.on("file:add", handleFileAdd);
@@ -497,6 +513,7 @@ const FileTree = ({
     setFlattenedTree,
     nodeExpandedState,
     startPath,
+    activeEditorId,
   ]);
 
   // This function is a bit confusing.
@@ -721,6 +738,7 @@ const FileTree = ({
         delete newFilesContent[oldPath];
         return newFilesContent;
       });
+
       updateFilePathsInFileTabBar({ oldPath, newPath: node.path }, undefined);
     }
     if (node.type === "folder") {
@@ -1187,11 +1205,11 @@ const FileTree = ({
   }
   return (
     <ScrollArea
-      className="w-full h-full overflow-auto bg-[#0E1525] root-scroll"
+      className="w-full h-full overflow-auto bg-[#171D2D] root-scroll"
       ref={scrollRef}
     >
       <div
-        className={`w-full cursor-pointer tree-container bg-[#0E1525] relative`}
+        className={`w-full cursor-pointer tree-container bg-[#171D2D] relative`}
         onContextMenu={handleRightClick}
         style={{ height: `${virtualizer.getTotalSize()}px` }}
       >
@@ -1278,7 +1296,8 @@ const FileTree = ({
 
           if (
             start === 0 &&
-            path === getFolderPath(selectedFilePath) &&
+            currSelectedFilePath &&
+            path === getFolderPath(currSelectedFilePath) &&
             flattenedTree[0].path !== path
           ) {
             return null;

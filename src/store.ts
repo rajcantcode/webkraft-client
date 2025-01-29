@@ -28,35 +28,65 @@ export type RenamePathObj = {
   newPath: string;
 };
 
+export type FileTabs = {
+  [editorId: string]: string[];
+};
+
+export type LastSelectedFilePaths = {
+  [editorId: string]: string[];
+};
+
+export type SelectedFilePath = {
+  [editorId: string]: string;
+};
+
 type WorkspaceStore = {
   name: string;
   link: string;
   baseLink: string;
   policy: string;
   fileStructure: Array<TreeFileNode | TreeFolderNode> | null;
-  selectedFilePath: string;
+  selectedFilePath: SelectedFilePath;
   filesContent: FileContentObj;
-  fileTabs: string[];
-  lastSelectedFilePaths: string[];
+  fileTabs: FileTabs;
+  lastSelectedFilePaths: LastSelectedFilePaths;
+  editorIds: string[];
+  lastSelectedEditorIds: string[];
+  activeEditorId: string;
+  lastPathBeforeClosingEditor: string;
+  setLastPathBeforeClosingEditor: (path: string) => void;
   setWorkspaceData: (
     name: string,
     link: string,
     baseLink: string,
     policy: string,
-    fileStructure: Array<TreeFileNode | TreeFolderNode> | null
+    fileStructure: Array<TreeFileNode | TreeFolderNode> | null,
   ) => void;
   setFileStructure: (
-    fileStructure: Array<TreeFileNode | TreeFolderNode>
+    fileStructure: Array<TreeFileNode | TreeFolderNode>,
   ) => void;
-  setSelectedFilePath: (path: string) => void;
+  setSelectedFilePath: (
+    path: SelectedFilePath | ((path: SelectedFilePath) => SelectedFilePath),
+  ) => void;
   setFilesContent: (
-    filesContent: FileContentObj | ((prev: FileContentObj) => FileContentObj)
+    filesContent: FileContentObj | ((prev: FileContentObj) => FileContentObj),
   ) => void;
-  setFileTabs: (fileTabs: string[]) => void;
+  setFileTabs: (
+    fileTabs: FileTabs | ((fileTabs: FileTabs) => FileTabs),
+  ) => void;
   setLastSelectedFilePaths: (
-    lastSelectedFilePaths: string[] | ((prev: string[]) => string[])
+    lastSelectedFilePaths:
+      | LastSelectedFilePaths
+      | ((prev: LastSelectedFilePaths) => LastSelectedFilePaths),
+  ) => void;
+  setLastSelectedEditorIds: (
+    lastSelectedEditorIds:
+      | string[]
+      | ((lastSelectedEditorIds: string[]) => string[]),
   ) => void;
   clearWorkspaceData: () => void;
+  setEditorIds: (editorIds: string[] | ((prev: string[]) => string[])) => void;
+  setActiveEditorId: (editorId: string) => void;
 };
 
 export const useUserStore = create<UserStore>((set) => ({
@@ -74,20 +104,32 @@ export const useWorkspaceStore = create<WorkspaceStore>(
       baseLink: "",
       policy: "",
       fileStructure: null,
-      selectedFilePath: "",
+      selectedFilePath: {},
       filesContent: {},
-      fileTabs: [],
-      lastSelectedFilePaths: [],
+      fileTabs: {},
+      lastSelectedFilePaths: {},
+      editorIds: [],
+      lastSelectedEditorIds: [],
+      activeEditorId: "",
+      lastPathBeforeClosingEditor: "",
       setWorkspaceData: (name, link, baseLink, policy, fileStructure) =>
         set(
           { name, link, baseLink, policy, fileStructure },
           undefined,
-          "setWorkspaceData"
+          "setWorkspaceData",
         ),
       setFileStructure: (fileStructure) =>
         set({ fileStructure }, undefined, "setFileStructure"),
-      setSelectedFilePath: (path) =>
-        set({ selectedFilePath: path }, undefined, "setSelectedFilePath"),
+      setSelectedFilePath: (path) => {
+        set(
+          (state) => ({
+            selectedFilePath:
+              typeof path === "function" ? path(state.selectedFilePath) : path,
+          }),
+          undefined,
+          "setSelectedFilePath",
+        );
+      },
       setFilesContent: (filesContent) => {
         set(
           (state) => ({
@@ -97,10 +139,21 @@ export const useWorkspaceStore = create<WorkspaceStore>(
                 : filesContent,
           }),
           undefined,
-          "setFilesContent"
+          "setFilesContent",
         );
       },
-      setFileTabs: (fileTabs) => set({ fileTabs }, undefined, "setFileTabs"),
+      setFileTabs: (fileTabs) => {
+        set(
+          (state) => ({
+            fileTabs:
+              typeof fileTabs === "function"
+                ? fileTabs(state.fileTabs)
+                : fileTabs,
+          }),
+          undefined,
+          "setFileTabs",
+        );
+      },
       setLastSelectedFilePaths: (lastSelectedFilePaths) => {
         set(
           (state) => ({
@@ -110,7 +163,26 @@ export const useWorkspaceStore = create<WorkspaceStore>(
                 : lastSelectedFilePaths,
           }),
           undefined,
-          "setLastSelectedFilePaths"
+          "setLastSelectedFilePaths",
+        );
+      },
+      setLastSelectedEditorIds: (lastSelectedEditorIds) => {
+        set(
+          (state) => ({
+            lastSelectedEditorIds:
+              typeof lastSelectedEditorIds === "function"
+                ? lastSelectedEditorIds(state.lastSelectedEditorIds)
+                : lastSelectedEditorIds,
+          }),
+          undefined,
+          "setLastSelectedEditorIds",
+        );
+      },
+      setLastPathBeforeClosingEditor: (path) => {
+        set(
+          { lastPathBeforeClosingEditor: path },
+          undefined,
+          "setLastPathBeforeClosingEditor",
         );
       },
       clearWorkspaceData: () => {
@@ -121,16 +193,30 @@ export const useWorkspaceStore = create<WorkspaceStore>(
             baseLink: "",
             policy: "",
             fileStructure: null,
-            selectedFilePath: "",
+            selectedFilePath: {},
             filesContent: {},
-            fileTabs: [],
-            lastSelectedFilePaths: [],
+            fileTabs: {},
+            lastSelectedFilePaths: {},
           },
           undefined,
-          "clearWorkspaceData"
+          "clearWorkspaceData",
         );
       },
+      setEditorIds: (editorIds) => {
+        set(
+          (state) => ({
+            editorIds:
+              typeof editorIds === "function"
+                ? editorIds(state.editorIds)
+                : editorIds,
+          }),
+          undefined,
+          "setEditorIds",
+        );
+      },
+      setActiveEditorId: (editorId) =>
+        set({ activeEditorId: editorId }, undefined, "setActiveEditorId"),
     }),
-    { trace: true }
-  )
+    { trace: true },
+  ),
 );

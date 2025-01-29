@@ -15,7 +15,6 @@ import {
   verifyUser,
 } from "../helpers";
 import debounce from "lodash.debounce";
-import { useLifecycles } from "react-use";
 
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useParams } from "react-router-dom";
@@ -247,6 +246,7 @@ const Workspace = () => {
     return <div>Error verifying user</div>;
   }
   if (workspaceLoaded && fileStructureReceived) {
+    const editorSize = 100 / editorIds.length;
     return (
       <div className="h-full bg-black">
         <ResizablePanelGroup direction="horizontal">
@@ -272,7 +272,8 @@ const Workspace = () => {
                     {editorIds.map((id, i) => (
                       <React.Fragment key={id}>
                         <ResizablePanel
-                          defaultSize={100 / editorIds.length}
+                          defaultSize={editorSize}
+                          minSize={5}
                           order={i + 1}
                           key={id}
                           id={id}

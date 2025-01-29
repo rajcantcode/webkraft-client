@@ -5,7 +5,7 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { FileContentObj, useWorkspaceStore } from "../store";
+import { useWorkspaceStore } from "../store";
 import { loadFile, loadNodeModulesFile } from "../helpers";
 import { Editor as MonacoEditor, OnMount } from "@monaco-editor/react";
 import { Symbol } from "../types/symbol";
@@ -24,7 +24,6 @@ import {
   edIdToPathToScrollOffsetAndCursorPos,
   scrollOffsetAndCursorPos,
 } from "../constants";
-import { rm } from "fs";
 
 // separate editor and monaco type from OnMount
 type IStandaloneCodeEditor = Parameters<OnMount>[0];
@@ -178,7 +177,9 @@ const Editor = ({
           monaco.Uri.parse(selectedFilePath),
         );
         if (!newModel) return;
+
         editor.setModel(newModel);
+
         modelRef.current = newModel;
         model = newModel;
         const key = editorId + selectedFilePath;
@@ -239,9 +240,25 @@ const Editor = ({
   );
 
   useEffect(() => {
-    if (editorId === activeEditorId && editorRef.current && monacoRef.current) {
-      editorRef.current.focus();
-      const model = modelRef.current;
+    if (editorRef.current && monacoRef.current) {
+      const uri = monacoRef.current.Uri.parse(currSelectedFilePath);
+      const model = monacoRef.current.editor.getModel(uri);
+
+      if (model) {
+        const ediModel = editorRef.current.getModel();
+
+        if (!ediModel || ediModel.isDisposed()) {
+          editorRef.current.setModel(model);
+          modelRef.current = model;
+          const key = editorId + currSelectedFilePath;
+          const temp = edIdToPathToScrollOffsetAndCursorPos[key];
+          if (temp) {
+            editorRef.current.setPosition(temp.cursorPos);
+            editorRef.current.setScrollTop(temp.scrollOffset);
+            delete edIdToPathToScrollOffsetAndCursorPos[key];
+          }
+        }
+      }
       if (!model || model.isDisposed()) {
         const newModel = monacoRef.current.editor.createModel(
           filesContent[currSelectedFilePath].content,
@@ -249,19 +266,36 @@ const Editor = ({
           monacoRef.current.Uri.parse(currSelectedFilePath),
         );
         if (!newModel) return;
+
         editorRef.current.setModel(newModel);
+
         modelRef.current = newModel;
         const key = editorId + currSelectedFilePath;
         const temp = edIdToPathToScrollOffsetAndCursorPos[key];
         if (temp) {
           editorRef.current.setPosition(temp.cursorPos);
           editorRef.current.setScrollTop(temp.scrollOffset);
-          editorRef.current.focus();
           delete edIdToPathToScrollOffsetAndCursorPos[key];
         }
       }
     }
-  }, [editorId, activeEditorId, editorIds]);
+
+    if (editorId === activeEditorId) {
+      editorRef.current?.focus();
+    }
+  }, [editorId, editorIds]);
+
+  useEffect(() => {
+    if (editorId === activeEditorId) {
+      editorRef.current?.focus();
+    }
+  }, [editorId, activeEditorId]);
+
+  useEffect(() => {
+    if (editorId === activeEditorId) {
+      editorRef.current?.focus();
+    }
+  }, [activeEditorId, editorId]);
 
   useEffect(() => {
     currSelectedFilePathRef.current = currSelectedFilePath;
@@ -370,28 +404,10 @@ const Editor = ({
     return { cursorPos, scrollOffset };
   }, []);
 
-  // const debouncedFileEdit = useCallback(debounce(handleFileEdit, 500), [
-  //   handleFileEdit,
-  // ]);
-
-  // const debouncedFileEdit = useCallback(
-  //   (value: string | undefined) => {
-  //     debounce(handleFileEdit, 500)(value);
-  //   },
-  //   [handleFileEdit],
-  // );
   const debouncedFileEdit = useMemo(
     () => debounce(handleFileEdit, 500),
     [handleFileEdit],
   );
-
-  // const request = debounce(async (value: string | undefined) => {
-  //   handleFileEdit(value);
-  // }, 800);
-
-  // const debouncedFileEdit = useCallback((value: string | undefined) => {
-  //   request(value);
-  // }, []);
 
   if (currSelectedFilePath === "") {
     return <div className="h-full bg-emerald-400">Please select a file</div>;

@@ -181,7 +181,12 @@ const FileTabBar = ({
         scrollOffsetAndCursorPosOfCurrSelectedFilePath;
     }
     setActiveEditorId(newEditorId);
-    setEditorIds((prev) => [...prev, newEditorId]);
+    setEditorIds((prev) => {
+      const prevCopy = [...prev];
+      const index = prevCopy.indexOf(editorId);
+      prevCopy.splice(index + 1, 0, newEditorId);
+      return prevCopy;
+    });
     setSelectedFilePath((prev) => ({
       ...prev,
       [newEditorId]: currSelectedFilePath,

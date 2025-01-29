@@ -1,61 +1,47 @@
 import logo from "../icons/logo.svg";
 
+const shortcut = "shortcut flex items-center w-full justify-between my-2";
+const shortcutTitle = "title text-sm text-right w-[calc(100%-75px)] mr-4";
+const shortCutKeys = "keys flex items-center gap-1 justify-start min-w-[75px]";
+const shortcutKey =
+  "key bg-[#3534342b] border border-[#44444499] shadow-[inset_0_-1px_0_#0000005c] px-1 py-0.5 text-xs rounded-sm min-w-[22px] max-w-[22px] text-center";
+
 const NoFileSelected = () => {
   return (
-    <div className="w-full h-full flex items-center justify-center bg-black">
+    <div className="flex items-center justify-center w-full h-full bg-[#1B2333]">
       <div className="content max-w-[70%] flex flex-col items-center">
-        <div className="logo w-full flex items-center justify-center">
+        <div className="flex items-center justify-center w-full logo">
           <img src={logo} alt="" className="w-1/2 h-1/2" />
         </div>
-        <div className="shortcuts-info flex flex-col w-full">
-          <div className="shortcut w-full flex items-center gap-2">
-            <span className="title text-right text-sm">Show All Commands</span>
-            <span className="keys flex items-center gap-1 justify-start">
-              <span className="key bg-[#8080802b] border border-b-[#44444499] shadow-[inset_0_-1px_0_#0000005c] px-1 py-0.5 text-xs rounded-sm">
-                ⇧
-              </span>
-              <span className="key bg-[#8080802b] border border-b-[#44444499] shadow-[inset_0_-1px_0_#0000005c] px-1 py-0.5 text-xs rounded-sm">
-                ⌘
-              </span>
-              <span className="key bg-[#8080802b] border border-b-[#44444499] shadow-[inset_0_-1px_0_#0000005c] px-1 py-0.5 text-xs rounded-sm">
-                P
-              </span>
+        <div className="flex flex-col shortcuts-info">
+          <div className={shortcut}>
+            <p className={shortcutTitle}>Show All Commands</p>
+            <span className={shortCutKeys}>
+              <span className={shortcutKey}>⇧</span>
+              <span className={shortcutKey}>⌘</span>
+              <span className={shortcutKey}>P</span>
             </span>
           </div>
-          <div className="shortcut w-full flex items-center gap-2">
-            <span className="title text-right text-sm">Go to File</span>
-            <span className="keys flex items-center gap-1">
-              <span className="key bg-[#8080802b] border border-b-[#44444499] shadow-[inset_0_-1px_0_#0000005c] px-1 py-0.5 text-xs rounded-sm">
-                ⌘
-              </span>
-              <span className="key bg-[#8080802b] border border-b-[#44444499] shadow-[inset_0_-1px_0_#0000005c] px-1 py-0.5 text-xs rounded-sm">
-                P
-              </span>
+          <div className={shortcut}>
+            <p className={shortcutTitle}>Go to File</p>
+            <span className={shortCutKeys}>
+              <span className={shortcutKey}>⌘</span>
+              <span className={shortcutKey}>P</span>
             </span>
           </div>
-          <div className="shortcut w-full flex items-center gap-2">
-            <span className="title text-right text-sm">Find in files</span>
-            <span className="keys flex items-center gap-1">
-              <span className="key bg-[#8080802b] border border-b-[#44444499] shadow-[inset_0_-1px_0_#0000005c] px-1 py-0.5 text-xs rounded-sm">
-                ⇧
-              </span>
-              <span className="key bg-[#8080802b] border border-b-[#44444499] shadow-[inset_0_-1px_0_#0000005c] px-1 py-0.5 text-xs rounded-sm">
-                ⌘
-              </span>
-              <span className="key bg-[#8080802b] border border-b-[#44444499] shadow-[inset_0_-1px_0_#0000005c] px-1 py-0.5 text-xs rounded-sm">
-                F
-              </span>
+          <div className={shortcut}>
+            <p className={shortcutTitle}>Find in files</p>
+            <span className={shortCutKeys}>
+              <span className={shortcutKey}>⇧</span>
+              <span className={shortcutKey}>⌘</span>
+              <span className={shortcutKey}>F</span>
             </span>
           </div>
-          <div className="shortcut w-full flex items-center gap-2">
-            <span className="title text-right text-sm">Toggle Terminal</span>
-            <span className="keys flex items-center gap-1">
-              <span className="key bg-[#8080802b] border border-b-[#44444499] shadow-[inset_0_-1px_0_#0000005c] px-1 py-0.5 text-xs rounded-sm">
-                ⌃
-              </span>
-              <span className="key bg-[#8080802b] border border-b-[#44444499] shadow-[inset_0_-1px_0_#0000005c] px-1 py-0.5 text-xs rounded-sm">
-                `
-              </span>
+          <div className={shortcut}>
+            <p className={shortcutTitle}>Toggle Terminal</p>
+            <span className={shortCutKeys}>
+              <span className={shortcutKey}>⌃</span>
+              <span className={shortcutKey}>`</span>
             </span>
           </div>
         </div>

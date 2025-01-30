@@ -32,6 +32,7 @@ import {
 import { useVirtualizer } from "@tanstack/react-virtual";
 import TreeInput from "./TreeInput.js";
 import { createPortal } from "react-dom";
+import { cn } from "../lib/utils.js";
 
 type ExpandedChildrenLength = { path: string; length: number };
 type DepthAndStartInfo = {
@@ -139,11 +140,13 @@ const FileTree = ({
   socket,
   // path from which to start the flattened tree, is only passed when used in breadcrumbs
   startPath = "",
+  className = "",
 }: {
   padLeft: number;
   fileFetchStatus: { [key: string]: boolean };
   socket: Socket | null;
   startPath?: string;
+  className?: string;
 }) => {
   const fileTree = useWorkspaceStore((state) => state.fileStructure);
   const setFileTree = useWorkspaceStore((state) => state.setFileStructure);
@@ -196,6 +199,8 @@ const FileTree = ({
     getScrollElement: () => scrollRef.current,
     estimateSize: () => itemSize,
     overscan: 5,
+    paddingStart: startPath ? 0 : 6,
+    paddingEnd: startPath ? 0 : 6,
   });
 
   const scrollToPath = useCallback(
@@ -1205,7 +1210,10 @@ const FileTree = ({
   }
   return (
     <ScrollArea
-      className="w-full h-full overflow-auto bg-[#171D2D] root-scroll"
+      className={cn(
+        "w-full h-full overflow-auto bg-[#171D2D] root-scroll",
+        className,
+      )}
       ref={scrollRef}
     >
       <div

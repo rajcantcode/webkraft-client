@@ -21,6 +21,11 @@ import { useParams } from "react-router-dom";
 import { io, ManagerOptions, Socket, SocketOptions } from "socket.io-client";
 import { TreeFolderNode } from "../constants";
 import TerminalContainer from "../components/TerminalContainer";
+import { Sidebar } from "../components/SideBar";
+import { SideBar } from "../types/sidebar";
+import { ProjectSearch } from "../components/ProjectSearch";
+import { Vcs } from "../components/Vcs";
+import { WorkspaceSettings } from "../components/WorkspaceSettings";
 
 function useSocketConnection(
   socketLink: string | null,
@@ -43,6 +48,7 @@ function useSocketConnection(
 
   return socket;
 }
+
 const Workspace = () => {
   const username = useUserStore((state) => state.username);
   const email = useUserStore((state) => state.email);
@@ -60,6 +66,12 @@ const Workspace = () => {
   const [terminalContainerSize, setTerminalContainerSize] = useState(25);
   // const socketRef = useRef<Socket | null>(null);
   const [socketLink, setSocketLink] = useState<string | null>(null);
+  const [sidebarState, setSidebarState] = useState<SideBar>({
+    files: true,
+    search: false,
+    vcs: false,
+    settings: false,
+  });
   const socket = useSocketConnection(socketLink, {
     withCredentials: true,
     // @ts-ignore
@@ -248,8 +260,15 @@ const Workspace = () => {
   if (workspaceLoaded && fileStructureReceived) {
     const editorSize = 100 / editorIds.length;
     return (
-      <div className="h-full bg-black">
-        <ResizablePanelGroup direction="horizontal">
+      <div className="h-full bg-black flex">
+        <Sidebar
+          sidebarState={sidebarState}
+          setSidebarState={setSidebarState}
+        />
+        <ResizablePanelGroup
+          direction="horizontal"
+          className="w-[calc(100%-48px)]"
+        >
           <ResizablePanel
             defaultSize={20}
             minSize={15}
@@ -261,6 +280,14 @@ const Workspace = () => {
               padLeft={8}
               fileFetchStatus={fileFetchStatus.current}
               socket={socket}
+              className={`${sidebarState.files ? "block" : "hidden"}`}
+            />
+            <ProjectSearch
+              className={`${sidebarState.search ? "block" : "hidden"}`}
+            />
+            <Vcs className={`${sidebarState.vcs ? "block" : "hidden"}`} />
+            <WorkspaceSettings
+              className={`${sidebarState.settings ? "block" : "hidden"}`}
             />
           </ResizablePanel>
           <ResizableHandle withHandle={true} direction="horizontal" />

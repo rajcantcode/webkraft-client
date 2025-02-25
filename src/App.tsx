@@ -6,8 +6,6 @@ import Welcome from "./pages/Welcome";
 import Home from "./pages/Home";
 import Login from "./pages/Login";
 import SignUp from "./pages/SignUp";
-import FileTree from "./components/FileTree";
-
 function App() {
   return (
     <Router>
@@ -21,7 +19,6 @@ function App() {
             path="workspace/:username/:workspacename"
             element={<Workspace />}
           ></Route>
-          <Route path="/choco" element={<FileTree padLeft={15} />}></Route>
         </Route>
       </Routes>
     </Router>

@@ -25,4 +25,31 @@ const TooltipContent = React.forwardRef<
 ));
 TooltipContent.displayName = TooltipPrimitive.Content.displayName;
 
-export { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider };
+const TooltipWrapper = ({
+  title,
+  children,
+  side = "bottom",
+}: {
+  title: string;
+  children: React.ReactNode;
+  side?: "top" | "right" | "bottom" | "left";
+}) => {
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>{children}</TooltipTrigger>
+        <TooltipContent side={side}>
+          <p className="p-1 rounded-md bg-[#3D445C]">{title}</p>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+};
+
+export {
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+  TooltipProvider,
+  TooltipWrapper,
+};

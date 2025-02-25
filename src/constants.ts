@@ -9,6 +9,12 @@ export type TreeFileNode = {
   depth: number;
 };
 
+export const OS = window.navigator.userAgent.includes("Mac")
+  ? "mac"
+  : window.navigator.userAgent.includes("Linux")
+  ? "linux"
+  : "win";
+
 export type TreeFolderNode = {
   name: string;
   path: string;

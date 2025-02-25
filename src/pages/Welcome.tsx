@@ -25,7 +25,7 @@ const Welcome = () => {
         <p>Verifying user please wait</p>
       ) : (
         <div>
-          <p>Welcome to the Kodeit!</p>
+          <p>Welcome to the WebKraft!</p>
           <Link to="/login">Login</Link>
           <Link to="/signup">signup</Link>
         </div>

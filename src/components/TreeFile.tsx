@@ -14,17 +14,17 @@ type HandleRename = (
   depth: number,
   path: string,
   newName: string,
-  type: "file" | "folder",
+  type: "file" | "folder"
 ) => void;
 type HandleDelete = (
   path: string,
   pni: number,
-  type: "file" | "folder",
+  type: "file" | "folder"
 ) => void;
 type CheckIfNameIsUnique = (
   pni: number,
   depth: number,
-  newName: string,
+  newName: string
 ) => boolean;
 type DeleteNamesSet = (parentIndex: number) => void;
 type HandleMoveNodes = (sourcePath: string, destinationPath: string) => void;
@@ -63,11 +63,11 @@ const TreeFile = ({
   });
   const selectedFilePath = useWorkspaceStore((state) => state.selectedFilePath);
   const setSelectedFilePath = useWorkspaceStore(
-    (state) => state.setSelectedFilePath,
+    (state) => state.setSelectedFilePath
   );
   const activeEditorId = useWorkspaceStore((state) => state.activeEditorId);
   const setActiveEditorId = useWorkspaceStore(
-    (state) => state.setActiveEditorId,
+    (state) => state.setActiveEditorId
   );
   const setEditorIds = useWorkspaceStore((state) => state.setEditorIds);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -122,13 +122,7 @@ const TreeFile = ({
         // setSelectedFilePath(node.path);
       }
     },
-    [
-      node,
-      activeEditorId,
-      setActiveEditorId,
-      setEditorIds,
-      setSelectedFilePath,
-    ],
+    [node, activeEditorId, setActiveEditorId, setEditorIds, setSelectedFilePath]
   );
 
   const handleDragStart = useCallback(
@@ -136,7 +130,7 @@ const TreeFile = ({
       e.dataTransfer.setData("text/plain", node.path);
       e.dataTransfer.effectAllowed = "copyMove";
     },
-    [node],
+    [node]
   );
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -163,7 +157,7 @@ const TreeFile = ({
   const handleInputSubmit = (
     e:
       | React.FormEvent<HTMLFormElement>
-      | React.FocusEvent<HTMLInputElement, Element>,
+      | React.FocusEvent<HTMLInputElement, Element>
   ) => {
     e.preventDefault();
     e.stopPropagation();
@@ -237,7 +231,7 @@ const TreeFile = ({
         console.error(error);
       }
     },
-    [node.path],
+    [node.path]
   );
 
   const handleDragOver = useCallback((e: React.DragEvent<HTMLDivElement>) => {
@@ -271,7 +265,7 @@ const TreeFile = ({
       >
         {inputState.show ? (
           <form
-            className="w-full h-full bg-transparent z-10"
+            className="z-10 w-full h-full bg-transparent"
             onSubmit={handleInputSubmit}
             onClick={(e) => e.stopPropagation()}
           >
@@ -293,7 +287,7 @@ const TreeFile = ({
               scrollRef.current &&
               createPortal(
                 <div
-                  className="err-container absolute"
+                  className="absolute err-container"
                   style={{
                     transform: `translateY(${start + itemSize}px)`,
                     width: `calc(100% - ${padLeft}px)`,
@@ -310,13 +304,15 @@ const TreeFile = ({
                     </p>
                   </div>
                 </div>,
-                scrollRef.current,
+                scrollRef.current
               )}
           </form>
         ) : (
           <>
             <div
-              className={`flex items-center sm:w-full gap-2 name ${showEditOptions ? "sm:group-hover:w-[calc(100%-80px)]" : ""} w-[calc(100%-40px)]`}
+              className={`flex items-center sm:w-full gap-2 name ${
+                showEditOptions ? "sm:group-hover:w-[calc(100%-80px)]" : ""
+              } w-[calc(100%-40px)]`}
             >
               <img src={icon} alt="" className="w-4 h-4" />
               <p className="overflow-hidden text-ellipsis whitespace-nowrap">

@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { RenamePathObj, useWorkspaceStore } from "../store";
 import { BsLayoutSplit } from "react-icons/bs";
-import { getFileIcon } from "../lib/utils";
+import { cn, getFileIcon } from "../lib/utils";
 import exitIcon from "../icons/exit.svg";
 // import * as ScrollArea from "@radix-ui/react-scroll-area";
 import { ScrollArea, ScrollBar } from "./ui/ScrollArea";
@@ -10,12 +10,14 @@ import {
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
+  TooltipWrapper,
 } from "./ui/ToolTip";
 import { Button } from "./ui/Button";
 import { nanoid } from "nanoid";
 import {
   edIdToPathToScrollOffsetAndCursorPos,
   scrollOffsetAndCursorPos,
+  OS,
 } from "../constants";
 
 const regex = /(?:[^/]+\/)?([^/]+\/[^/]+)$/;
@@ -33,42 +35,42 @@ const FileTabBar = ({
 }) => {
   const selectedFilePath = useWorkspaceStore((state) => state.selectedFilePath);
   const setSelectedFilePath = useWorkspaceStore(
-    (state) => state.setSelectedFilePath,
+    (state) => state.setSelectedFilePath
   );
   const setEditorIds = useWorkspaceStore((state) => state.setEditorIds);
   const lastSelectedEditorIds = useWorkspaceStore(
-    (state) => state.lastSelectedEditorIds,
+    (state) => state.lastSelectedEditorIds
   );
   const setLastSelectedEditorIds = useWorkspaceStore(
-    (state) => state.setLastSelectedEditorIds,
+    (state) => state.setLastSelectedEditorIds
   );
   const setLastPathBeforeClosingEditor = useWorkspaceStore(
-    (state) => state.setLastPathBeforeClosingEditor,
+    (state) => state.setLastPathBeforeClosingEditor
   );
   const activeEditorId = useWorkspaceStore((state) => state.activeEditorId);
   const setActiveEditorId = useWorkspaceStore(
-    (state) => state.setActiveEditorId,
+    (state) => state.setActiveEditorId
   );
   const [currSelectedFilePath, setCurrSelectedFilePath] = useState(
-    selectedFilePath[editorId],
+    selectedFilePath[editorId]
   );
   const fileTabs = useWorkspaceStore((state) => state.fileTabs);
   const [currFileTabs, setCurrFileTabs] = useState(fileTabs[editorId] || []);
   const setFileTabs = useWorkspaceStore((state) => state.setFileTabs);
   const lastSelectedFilePaths = useWorkspaceStore(
-    (state) => state.lastSelectedFilePaths,
+    (state) => state.lastSelectedFilePaths
   );
   const setLastSelectedFilePaths = useWorkspaceStore(
-    (state) => state.setLastSelectedFilePaths,
+    (state) => state.setLastSelectedFilePaths
   );
 
   useEffect(
     () => setCurrSelectedFilePath(selectedFilePath[editorId]),
-    [selectedFilePath, editorId, setCurrSelectedFilePath],
+    [selectedFilePath, editorId, setCurrSelectedFilePath]
   );
   useEffect(
     () => setCurrFileTabs(fileTabs[editorId]),
-    [fileTabs, editorId, setCurrFileTabs],
+    [fileTabs, editorId, setCurrFileTabs]
   );
   useEffect(() => {
     if (!currSelectedFilePath) return;
@@ -125,7 +127,7 @@ const FileTabBar = ({
         });
         setEditorIds((prev) => prev.filter((id) => id !== editorId));
         const filteredLastSelectedEditorIds = lastSelectedEditorIds.filter(
-          (id) => id !== editorId,
+          (id) => id !== editorId
         );
         setActiveEditorId(filteredLastSelectedEditorIds.pop() || "");
         setLastSelectedEditorIds(filteredLastSelectedEditorIds);
@@ -136,7 +138,7 @@ const FileTabBar = ({
 
   const handleTabClick = (
     e: React.MouseEvent<HTMLDivElement, MouseEvent>,
-    path: string,
+    path: string
   ) => {
     e.stopPropagation();
     const target = e.target as HTMLElement;
@@ -203,7 +205,7 @@ const FileTabBar = ({
   return (
     <div className="tab-container h-[30px] w-full flex items-center justify-between">
       <ScrollArea
-        className="h-full w-full"
+        className="w-full h-full"
         onDragOver={handleDragOver}
         onDrop={handleDrop}
       >
@@ -212,7 +214,7 @@ const FileTabBar = ({
             const fileName = tab.slice(tab.lastIndexOf("/") + 1);
             return (
               <div
-                className={`flex items-center h-full gap-1 cursor-pointer min-w-fit max-w-60 tab border-r-[1px] border-b-[1px] border-[#2B3245] relative text-sm  ${
+                className={`flex items-center h-full gap-1 cursor-pointer min-w-fit max-w-60 tab border-r-[1px] border-b-[1px] border-[#2B3245] relative text-sm group ${
                   currSelectedFilePath === tab && activeEditorId === editorId
                     ? "bg-[#1B2333] border-0 before:content-[''] before:absolute before:top-0 before:left-0 before:right-0 before:h-[1px] before:bg-[#0179F2] text-[#f5f9fc]"
                     : "text-[#c2c8cc]"
@@ -220,40 +222,43 @@ const FileTabBar = ({
                 key={tab}
                 onClick={(e) => handleTabClick(e, tab)}
               >
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <div className="flex items-center gap-2 px-1 name-and-logo hover:bg-[#1C2333] h-full">
-                        <img
-                          src={getFileIcon(fileName)}
-                          alt="file icon"
-                          className="w-4 h-4"
-                        />
-                        <span className="overflow-hidden text-ellipsis whitespace-nowrap ">
-                          {fileName}
-                        </span>
-                      </div>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom">
-                      <p className="p-1 rounded-md bg-[#3D445C]">
-                        {tab.match(regex)![1]}
-                      </p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
+                <TooltipWrapper title={tab.match(regex)![1]}>
+                  <div className="flex items-center gap-2 px-1 name-and-logo hover:bg-[#1C2333] h-full">
+                    <img
+                      src={getFileIcon(fileName)}
+                      alt="file icon"
+                      className="w-4 h-4"
+                    />
+                    <span className="overflow-hidden text-ellipsis whitespace-nowrap ">
+                      {fileName}
+                    </span>
+                  </div>
+                </TooltipWrapper>
 
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <button className="h-full px-1 close-btn hover:bg-[#1C2333]">
-                        <img src={exitIcon} alt="" className="w-4 h-4" />
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom">
-                      <p className="p-1 rounded-md bg-[#3D445C]">close</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
+                <TooltipWrapper
+                  title={`close ${
+                    currSelectedFilePath === tab
+                      ? OS === "mac"
+                        ? "⌘W"
+                        : "Ctrl+W"
+                      : ""
+                  }`}
+                >
+                  <button
+                    className={cn(
+                      "h-full px-1 close-btn group-hover:visible flex items-center hover:bg-[#1C2333]",
+                      currSelectedFilePath === tab ? "visible" : "invisible"
+                    )}
+                  >
+                    <div
+                      className={`w-4 h-4 codicon codicon-close bg-transparent ${
+                        currSelectedFilePath === tab
+                          ? "text-[#f5f9fc]"
+                          : "text-[#c2c8cc]"
+                      } hover:text-[#f5f9fc]`}
+                    ></div>
+                  </button>
+                </TooltipWrapper>
               </div>
             );
           })}
@@ -261,21 +266,14 @@ const FileTabBar = ({
         <ScrollBar orientation="horizontal" />
       </ScrollArea>
       {activeEditorId === editorId ? (
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                onClick={handleSplitEditor}
-                className="h-full p-2 group hover:bg-[#1C2333] bg-[#171D2D]"
-              >
-                <BsLayoutSplit className="text-lg text-[#C2C8CC] group-hover:text-[#F5F9FC]" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom">
-              <p className="p-1 rounded-md bg-[#3D445C]">split editor</p>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
+        <TooltipWrapper title="split editor">
+          <Button
+            onClick={handleSplitEditor}
+            className="h-full p-2 group hover:bg-[#1C2333] bg-[#171D2D]"
+          >
+            <BsLayoutSplit className="text-lg text-[#C2C8CC] group-hover:text-[#F5F9FC]" />
+          </Button>
+        </TooltipWrapper>
       ) : null}
     </div>
   );

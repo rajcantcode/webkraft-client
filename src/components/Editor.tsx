@@ -22,8 +22,10 @@ import { FormatSVG } from "./BreadcrumbIconsSvg";
 import {
   clearEditorEntries,
   edIdToPathToScrollOffsetAndCursorPos,
+  OS,
   scrollOffsetAndCursorPos,
 } from "../constants";
+import { useHotkeys } from "react-hotkeys-hook";
 
 // separate editor and monaco type from OnMount
 type IStandaloneCodeEditor = Parameters<OnMount>[0];
@@ -49,19 +51,23 @@ const Editor = ({
   const selectedFilePath = useWorkspaceStore((state) => state.selectedFilePath);
   const filesContent = useWorkspaceStore((state) => state.filesContent);
   const setSelectedFilePath = useWorkspaceStore(
-    (state) => state.setSelectedFilePath,
+    (state) => state.setSelectedFilePath
   );
   const setFilesContent = useWorkspaceStore((state) => state.setFilesContent);
   const setActiveEditorId = useWorkspaceStore(
-    (state) => state.setActiveEditorId,
+    (state) => state.setActiveEditorId
   );
   const editorIds = useWorkspaceStore((state) => state.editorIds);
   const activeEditorId = useWorkspaceStore((state) => state.activeEditorId);
   const setLastSelectedEditorIds = useWorkspaceStore(
-    (state) => state.setLastSelectedEditorIds,
+    (state) => state.setLastSelectedEditorIds
+  );
+  const searchPosition = useWorkspaceStore((state) => state.searchPosition);
+  const setSearchPosition = useWorkspaceStore(
+    (state) => state.setSearchPosition
   );
   const [currSelectedFilePath, setCurrSelectedFilePath] = useState(
-    selectedFilePath[editorId],
+    selectedFilePath[editorId]
   );
   // This ref is just used in the callback of onDidBlurEditorText event listener to get the current selected file path.
   const currSelectedFilePathRef = useRef<string>(currSelectedFilePath);
@@ -83,10 +89,10 @@ const Editor = ({
       const startRow = model.getPositionAt(spans[0].start).lineNumber;
       const startColumn = model.getPositionAt(spans[0].start).column;
       const endRow = model.getPositionAt(
-        spans[0].start + spans[0].length,
+        spans[0].start + spans[0].length
       ).lineNumber;
       const endColumn = model.getPositionAt(
-        spans[0].start + spans[0].length,
+        spans[0].start + spans[0].length
       ).column;
       const symbol: Symbol = {
         ...rest,
@@ -106,14 +112,14 @@ const Editor = ({
       // kind, kindModifiers, text, spans: start, length
       return symbol;
     },
-    [],
+    []
   );
 
   const getSymbolInfo = useCallback(
     async (
       monaco: Monaco,
       model: ITextModel,
-      language: "javascript" | "typescript",
+      language: "javascript" | "typescript"
     ) => {
       const getWorker =
         language === "javascript"
@@ -123,7 +129,7 @@ const Editor = ({
       const worker = await getWorker(model.uri);
 
       const navigationTree = (await worker.getNavigationTree(
-        model.uri.toString(),
+        model.uri.toString()
       )) as ts.NavigationTree | undefined;
       if (!navigationTree) {
         console.error("No navigationTree generated");
@@ -132,7 +138,7 @@ const Editor = ({
       // Filter items which are of kind "alias"
       if (navigationTree.childItems) {
         navigationTree.childItems = navigationTree.childItems.filter(
-          (child) => child.kind !== "alias",
+          (child) => child.kind !== "alias"
         );
       }
 
@@ -140,7 +146,7 @@ const Editor = ({
 
       return symbolInfo;
     },
-    [getSimplifiedSymbolInfo],
+    [getSimplifiedSymbolInfo]
   );
 
   const handleEditorDidMount = useCallback(
@@ -148,7 +154,7 @@ const Editor = ({
       editor: IStandaloneCodeEditor,
       monaco: Monaco,
       selectedFilePath: string,
-      firstTime = false,
+      firstTime = false
     ) => {
       editor.focus();
 
@@ -174,7 +180,7 @@ const Editor = ({
         const newModel = monaco.editor.createModel(
           filesContent[selectedFilePath].content,
           filesContent[selectedFilePath].language,
-          monaco.Uri.parse(selectedFilePath),
+          monaco.Uri.parse(selectedFilePath)
         );
         if (!newModel) return;
 
@@ -236,7 +242,9 @@ const Editor = ({
       setActiveEditorId,
       editorId,
       setLastSelectedEditorIds,
-    ],
+      searchPosition,
+      setSearchPosition,
+    ]
   );
 
   useEffect(() => {
@@ -263,7 +271,7 @@ const Editor = ({
         const newModel = monacoRef.current.editor.createModel(
           filesContent[currSelectedFilePath].content,
           filesContent[currSelectedFilePath].language,
-          monacoRef.current.Uri.parse(currSelectedFilePath),
+          monacoRef.current.Uri.parse(currSelectedFilePath)
         );
         if (!newModel) return;
 
@@ -303,10 +311,33 @@ const Editor = ({
       handleEditorDidMount(
         editorRef.current,
         monacoRef.current,
-        currSelectedFilePath,
+        currSelectedFilePath
       );
     }
   }, [currSelectedFilePath]);
+
+  useEffect(() => {
+    if (searchPosition && editorRef.current && editorId === activeEditorId) {
+      setTimeout(() => {
+        if (!editorRef.current) return;
+        console.log("setted searchPosition in useEffect - ", searchPosition);
+        const position = {
+          lineNumber: searchPosition.lineNumber,
+          column: searchPosition.column,
+        };
+        editorRef.current.setPosition(position);
+        editorRef.current.revealPositionInCenter(position, 0);
+        editorRef.current.setSelection({
+          startLineNumber: searchPosition.lineNumber,
+          startColumn: searchPosition.matchIndex,
+          endLineNumber: searchPosition.lineNumber,
+          endColumn: searchPosition.column,
+        });
+        editorRef.current.focus();
+        setSearchPosition(null);
+      }, 10);
+    }
+  }, [searchPosition, setSearchPosition]);
 
   const dmpRef = useRef(new DiffMatchPatch());
 
@@ -360,7 +391,7 @@ const Editor = ({
             console.error(error);
             // ToDo -> show toast message
           }
-        },
+        }
       );
 
       if (!monacoRef.current || !editorRef.current) {
@@ -372,7 +403,7 @@ const Editor = ({
         const symbol = await getSymbolInfo(
           monacoRef.current,
           modelRef.current!,
-          language,
+          language
         );
         if (!symbol) {
           console.error("No navigation tree returned");
@@ -391,7 +422,7 @@ const Editor = ({
       currSelectedFilePath,
       activeEditorId,
       editorId,
-    ],
+    ]
   );
 
   const getScrollOffsetAndCursorPos = useCallback(() => {
@@ -406,7 +437,73 @@ const Editor = ({
 
   const debouncedFileEdit = useMemo(
     () => debounce(handleFileEdit, 500),
-    [handleFileEdit],
+    [handleFileEdit]
+  );
+
+  const closeCurrentFile = useCallback(() => {
+    const {
+      fileTabs,
+      lastSelectedFilePaths,
+      lastSelectedEditorIds,
+      setLastPathBeforeClosingEditor,
+      setFileTabs,
+      setLastSelectedFilePaths,
+      setEditorIds,
+    } = useWorkspaceStore.getState();
+    const newTabs = fileTabs[editorId].filter(
+      (tab) => tab !== currSelectedFilePath
+    );
+    const filteredLastSelectedFilePaths = [
+      ...lastSelectedFilePaths[editorId],
+    ].filter((prevPath) => prevPath !== currSelectedFilePath);
+    setFileTabs((prev) => {
+      if (!(newTabs.length > 0)) {
+        delete prev[editorId];
+        return { ...prev };
+      } else {
+        return { ...prev, [editorId]: newTabs };
+      }
+    });
+    if (newTabs.length > 0) {
+      setSelectedFilePath((prev) => ({
+        ...prev,
+        [editorId]: filteredLastSelectedFilePaths.pop() || "",
+      }));
+      setLastSelectedFilePaths((prev) => ({
+        ...prev,
+        [editorId]: filteredLastSelectedFilePaths,
+      }));
+    } else {
+      setLastSelectedFilePaths((prev) => {
+        delete prev[editorId];
+        return { ...prev };
+      });
+      setSelectedFilePath((prev) => {
+        delete prev[editorId];
+        return { ...prev };
+      });
+      setEditorIds((prev) => prev.filter((id) => id !== editorId));
+      const filteredLastSelectedEditorIds = lastSelectedEditorIds.filter(
+        (id) => id !== editorId
+      );
+      setActiveEditorId(filteredLastSelectedEditorIds.pop() || "");
+      setLastSelectedEditorIds(filteredLastSelectedEditorIds);
+      setLastPathBeforeClosingEditor(currSelectedFilePath);
+    }
+  }, [currSelectedFilePath, editorId]);
+
+  useHotkeys(
+    `${OS === "mac" ? "meta+w" : "ctrl+w"}`,
+    (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      closeCurrentFile();
+    },
+    {
+      enabled: activeEditorId === editorId,
+      enableOnContentEditable: true,
+      enableOnFormTags: true,
+    }
   );
 
   if (currSelectedFilePath === "") {
@@ -422,13 +519,13 @@ const Editor = ({
         currSelectedFilePath,
         currSelectedFilePath.slice(currSelectedFilePath.lastIndexOf("/") + 1),
         fileFetchStatus,
-        socket!,
+        socket!
       );
     } else {
       loadFile(
         currSelectedFilePath,
         currSelectedFilePath.slice(currSelectedFilePath.lastIndexOf("/") + 1), // filename
-        fileFetchStatus,
+        fileFetchStatus
       );
     }
     // Load file content
@@ -476,6 +573,7 @@ const Editor = ({
         // overrideServices={{}}
         className="h-[calc(100%-30px)]"
         onMount={(editor, monaco) => {
+          // onMount is triggered only the first time the editor is mounted
           editorRef.current = editor;
           monacoRef.current = monaco;
           if (scrollOffsetAndCursorPos[currSelectedFilePath]) {
@@ -484,6 +582,35 @@ const Editor = ({
             editor.setPosition(cursorPos);
             editor.setScrollTop(scrollOffset);
             delete scrollOffsetAndCursorPos[currSelectedFilePath];
+          }
+
+          if (searchPosition && editorId === activeEditorId) {
+            setTimeout(() => {
+              if (!editor) return;
+              editor.setPosition({
+                lineNumber: searchPosition.lineNumber,
+                column: searchPosition.column,
+              });
+              editor.revealPositionInCenter(
+                {
+                  lineNumber: searchPosition.lineNumber,
+                  column: searchPosition.column,
+                },
+                0
+              );
+              editor.setSelection({
+                startLineNumber: searchPosition.lineNumber,
+                startColumn: searchPosition.matchIndex,
+                endLineNumber: searchPosition.lineNumber,
+                endColumn: searchPosition.column,
+              });
+              console.log(
+                "setted searchPosition in onMount - ",
+                searchPosition
+              );
+              editor.focus();
+              setSearchPosition(null);
+            }, 10);
           }
 
           editor.onDidDispose(() => {

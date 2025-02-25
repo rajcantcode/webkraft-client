@@ -11,7 +11,7 @@ const ResizablePanelGroup = ({
   <ResizablePrimitive.PanelGroup
     className={cn(
       "flex h-full w-full data-[panel-group-direction=vertical]:flex-col",
-      className,
+      className
     )}
     {...props}
   />
@@ -55,7 +55,7 @@ const ResizableHandle = ({
         "data-[panel-group-direction=horizontal]:after:top-0 data-[panel-group-direction=horizontal]:after:left-1/2 data-[panel-group-direction=horizontal]:after:-translate-x-1/2 data-[panel-group-direction=horizontal]:after:h-full data-[panel-group-direction=horizontal]:after:w-1/2",
         // Handle rotation for vertical direction
         // "[&[data-panel-group-direction=vertical]>div]:rotate-90",
-        className,
+        className
       )}
       {...props}
     >
@@ -68,10 +68,10 @@ const ResizableHandle = ({
                 ? "w-full h-0.5"
                 : "w-6 h-0.5"
               : isHolding
-                ? "w-0.5 h-full"
-                : "w-0.5 h-6",
+              ? "w-0.5 h-full"
+              : "w-0.5 h-6",
 
-            "group-hover:bg-[#f5f9fc]",
+            "group-hover:bg-[#f5f9fc]"
           )}
           style={
             isHolding

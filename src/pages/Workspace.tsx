@@ -21,15 +21,16 @@ import { useParams } from "react-router-dom";
 import { io, ManagerOptions, Socket, SocketOptions } from "socket.io-client";
 import { TreeFolderNode } from "../constants";
 import TerminalContainer from "../components/TerminalContainer";
-import { Sidebar } from "../components/SideBar";
+import { SidebarNav } from "../components/SidebarNav";
 import { SideBar } from "../types/sidebar";
 import { ProjectSearch } from "../components/ProjectSearch";
 import { Vcs } from "../components/Vcs";
 import { WorkspaceSettings } from "../components/WorkspaceSettings";
+import { ImperativePanelHandle } from "react-resizable-panels";
 
 function useSocketConnection(
   socketLink: string | null,
-  options: Partial<ManagerOptions & SocketOptions>,
+  options: Partial<ManagerOptions & SocketOptions>
 ) {
   const [socket, setSocket] = useState<Socket | null>(null);
 
@@ -58,7 +59,7 @@ const Workspace = () => {
   const policy = useWorkspaceStore((state) => state.policy);
   const setWorkspaceData = useWorkspaceStore((state) => state.setWorkspaceData);
   const clearWorkspaceData = useWorkspaceStore(
-    (state) => state.clearWorkspaceData,
+    (state) => state.clearWorkspaceData
   );
   const editorIds = useWorkspaceStore((state) => state.editorIds);
   const setFileStructure = useWorkspaceStore((state) => state.setFileStructure);
@@ -66,12 +67,14 @@ const Workspace = () => {
   const [terminalContainerSize, setTerminalContainerSize] = useState(25);
   // const socketRef = useRef<Socket | null>(null);
   const [socketLink, setSocketLink] = useState<string | null>(null);
-  const [sidebarState, setSidebarState] = useState<SideBar>({
+  const [sidebarNavState, setSidebarNavState] = useState<SideBar>({
     files: true,
     search: false,
     vcs: false,
     settings: false,
   });
+  const [showSidebar, setShowSidebar] = useState(true);
+  const sidebarPanelRef = useRef<ImperativePanelHandle>(null);
   const socket = useSocketConnection(socketLink, {
     withCredentials: true,
     // @ts-ignore
@@ -112,7 +115,7 @@ const Workspace = () => {
     (size: number) => {
       request(size);
     },
-    [request],
+    [request]
   );
 
   const {
@@ -142,7 +145,7 @@ const Workspace = () => {
           data.workspaceLink!,
           baseLinkCopy,
           policyCopy,
-          null,
+          null
         );
         workspaceLinkCopy = data.workspaceLink!;
         setSocketLink(socketLink);
@@ -184,6 +187,14 @@ const Workspace = () => {
       console.error(error);
     },
   });
+
+  useEffect(() => {
+    if (showSidebar) {
+      sidebarPanelRef.current?.expand();
+    } else {
+      sidebarPanelRef.current?.collapse();
+    }
+  }, [showSidebar]);
   useEffect(() => {
     if (!socket) return;
 
@@ -194,7 +205,7 @@ const Workspace = () => {
         data.fileStructure,
         fileFetchStatus.current,
         baseLink,
-        policy,
+        policy
       );
     };
 
@@ -260,10 +271,12 @@ const Workspace = () => {
   if (workspaceLoaded && fileStructureReceived) {
     const editorSize = 100 / editorIds.length;
     return (
-      <div className="h-full bg-black flex">
-        <Sidebar
-          sidebarState={sidebarState}
-          setSidebarState={setSidebarState}
+      <div className="flex h-full bg-black">
+        <SidebarNav
+          sidebarNavState={sidebarNavState}
+          setSidebarNavState={setSidebarNavState}
+          showSidebar={showSidebar}
+          setShowSidebar={setShowSidebar}
         />
         <ResizablePanelGroup
           direction="horizontal"
@@ -275,19 +288,25 @@ const Workspace = () => {
             maxSize={50}
             collapsible={true}
             order={1}
+            className="bg-[#171D2D]"
+            ref={sidebarPanelRef}
+            onCollapse={() => setShowSidebar(false)}
+            onExpand={() => setShowSidebar(true)}
           >
             <FileTree
               padLeft={8}
               fileFetchStatus={fileFetchStatus.current}
               socket={socket}
-              className={`${sidebarState.files ? "block" : "hidden"}`}
+              className={`${sidebarNavState.files ? "block" : "hidden"}`}
             />
             <ProjectSearch
-              className={`${sidebarState.search ? "block" : "hidden"}`}
+              className={`${sidebarNavState.search ? "flex" : "hidden"}`}
+              isVisible={sidebarNavState.search}
+              socket={socket}
             />
-            <Vcs className={`${sidebarState.vcs ? "block" : "hidden"}`} />
+            <Vcs className={`${sidebarNavState.vcs ? "flex" : "hidden"}`} />
             <WorkspaceSettings
-              className={`${sidebarState.settings ? "block" : "hidden"}`}
+              className={`${sidebarNavState.settings ? "block" : "hidden"}`}
             />
           </ResizablePanel>
           <ResizableHandle withHandle={true} direction="horizontal" />

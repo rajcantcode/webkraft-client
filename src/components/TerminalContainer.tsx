@@ -13,12 +13,7 @@ import { FaPlus, FaEraser } from "react-icons/fa6";
 import { RxCross2 } from "react-icons/rx";
 import ResizableTerminalPane from "./ResizableTerminalPane";
 import debounce from "lodash.debounce";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "./ui/ToolTip";
+import { TooltipWrapper } from "./ui/ToolTip";
 const TerminalContainer = ({
   defaultPid,
   socket,
@@ -34,7 +29,7 @@ const TerminalContainer = ({
   const [activePaneId, setActivePaneId] = useState<string>("default-1");
   const [activePid, setActivePid] = useState<string>(defaultPid);
   const [terminalContainerSize, setTerminalContainerSize] = useState<number>(
-    defaultTerminalContainerSize,
+    defaultTerminalContainerSize
   );
 
   const request = debounce((size: number) => {
@@ -45,7 +40,7 @@ const TerminalContainer = ({
     (size: number) => {
       request(size);
     },
-    [request],
+    [request]
   );
 
   useEffect(() => {
@@ -66,7 +61,7 @@ const TerminalContainer = ({
       if (!socket) return;
       const terminalPanesCopy = [...terminalPanes];
       const parentPaneIndex = terminalPanesCopy.findIndex(
-        (pane) => pane.id === parentPaneId,
+        (pane) => pane.id === parentPaneId
       );
       if (parentPaneIndex === -1) {
         console.log("Parent pane not found");
@@ -74,7 +69,7 @@ const TerminalContainer = ({
       }
       const parentPane = terminalPanesCopy[parentPaneIndex];
       const terminalIndex = parentPane.terminals.findIndex(
-        (terminal) => terminal.id === terminalId,
+        (terminal) => terminal.id === terminalId
       );
       if (terminalIndex === -1) {
         console.log("Terminal not found");
@@ -96,7 +91,7 @@ const TerminalContainer = ({
         setActivePid(pid);
       });
     },
-    [terminalPanes, setTerminalPanes, socket, setActivePaneId],
+    [terminalPanes, setTerminalPanes, socket, setActivePaneId]
   );
 
   const killTerminal = useCallback(
@@ -104,7 +99,7 @@ const TerminalContainer = ({
       if (!socket) return;
       const terminalPanesCopy = [...terminalPanes];
       const parentPaneIndex = terminalPanesCopy.findIndex(
-        (pane) => pane.id === parentPaneId,
+        (pane) => pane.id === parentPaneId
       );
       if (parentPaneIndex === -1) {
         console.log("Parent pane not found");
@@ -112,7 +107,7 @@ const TerminalContainer = ({
       }
       const parentPane = terminalPanesCopy[parentPaneIndex];
       const terminalIndex = parentPane.terminals.findIndex(
-        (terminal) => terminal.id === terminalId,
+        (terminal) => terminal.id === terminalId
       );
       if (terminalIndex === -1) {
         console.log("Terminal not found");
@@ -143,7 +138,7 @@ const TerminalContainer = ({
         setTerminalPanes(terminalPanesCopy);
       });
     },
-    [terminalPanes, setTerminalPanes, socket, setActivePaneId],
+    [terminalPanes, setTerminalPanes, socket, setActivePaneId]
   );
 
   const addTerminal = (e: React.MouseEvent<HTMLButtonElement>) => {
@@ -180,7 +175,7 @@ const TerminalContainer = ({
     e: React.MouseEvent<HTMLDivElement, MouseEvent>,
     terminalId: string,
     terminalPid: string,
-    parentPaneId: string,
+    parentPaneId: string
   ) => {
     e.stopPropagation();
     e.preventDefault();
@@ -204,49 +199,30 @@ const TerminalContainer = ({
   return (
     <div className="w-full h-full term-container">
       <div className="w-full heading flex items-center justify-end p-1 bg-[#171D2D]">
-        <div className="flex items-center right-panel w-fit gap-1">
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  onClick={addTerminal}
-                  className="rounded-md p-1 hover:bg-[#313847]"
-                >
-                  <FaPlus className="text-sm" />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom">
-                <p className="p-1 rounded-md bg-[#3D445C]">New Terminal</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  onClick={clearTerminal}
-                  className="rounded-md p-1 hover:bg-[#313847]"
-                >
-                  <FaEraser className="text-sm" />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom">
-                <p className="p-1 rounded-md bg-[#3D445C]">Clear Terminal</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button className="rounded-md p-1 hover:bg-[#313847]">
-                  <RxCross2 className="text-sm" />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom">
-                <p className="p-1 rounded-md bg-[#3D445C]">Close pane</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+        <div className="flex items-center gap-1 right-panel w-fit">
+          <TooltipWrapper title="New Terminal">
+            <button
+              onClick={addTerminal}
+              className="rounded-md p-1 hover:bg-[#313847]"
+            >
+              <FaPlus className="text-sm" />
+            </button>
+          </TooltipWrapper>
+
+          <TooltipWrapper title="Clear Terminal">
+            <button
+              onClick={clearTerminal}
+              className="rounded-md p-1 hover:bg-[#313847]"
+            >
+              <FaEraser className="text-sm" />
+            </button>
+          </TooltipWrapper>
+
+          <TooltipWrapper title="Close pane">
+            <button className="rounded-md p-1 hover:bg-[#313847]">
+              <RxCross2 className="text-sm" />
+            </button>
+          </TooltipWrapper>
         </div>
       </div>
       {terminalPanes.length === 0 ? (
@@ -271,7 +247,9 @@ const TerminalContainer = ({
 
                 return (
                   <div
-                    className={`h-full ${activePaneId === pane.id ? "block w-full" : "hidden"}`}
+                    className={`h-full ${
+                      activePaneId === pane.id ? "block w-full" : "hidden"
+                    }`}
                     key={pane.id}
                   >
                     <ResizablePanelGroup
@@ -307,13 +285,15 @@ const TerminalContainer = ({
               order={2}
               className="h-full"
             >
-              <div className="w-full h-full overflow-y-auto sidebar cursor-pointer bg-gray-900">
+              <div className="w-full h-full overflow-y-auto bg-gray-900 cursor-pointer sidebar">
                 {terminalPanes.map((pane) => {
                   const parentPaneid = pane.id;
                   const totalPanes = pane.terminals.length - 1;
                   return (
                     <div
-                      className={`sidebar-pane-container ${pane.terminals.length > 1 ? "pl-1" : ""}`}
+                      className={`sidebar-pane-container ${
+                        pane.terminals.length > 1 ? "pl-1" : ""
+                      }`}
                       key={pane.id}
                     >
                       {pane.terminals.map((terminal, index) => {
@@ -330,60 +310,43 @@ const TerminalContainer = ({
                                 e,
                                 terminal.id,
                                 terminal.pid,
-                                parentPaneid,
+                                parentPaneid
                               )
                             }
                           >
-                            <div className="flex items-center lhs gap-2">
+                            <div className="flex items-center gap-2 lhs">
                               <span className="flex items-center">
                                 {pane.terminals.length > 1 && (
                                   <span className="decoration">
                                     {index === 0
                                       ? "┌ "
                                       : index === totalPanes
-                                        ? "└ "
-                                        : "├ "}
+                                      ? "└ "
+                                      : "├ "}
                                   </span>
                                 )}
                                 <BsTerminal className="text-sm" />
                               </span>
                               <span className="text-sm">bash</span>
                             </div>
-                            <div className="flex items-center rhs gap-2">
-                              <TooltipProvider>
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <button>
-                                      <BsLayoutSplit
-                                        data-action="split"
-                                        className="action-icon text-sm"
-                                      />
-                                    </button>
-                                  </TooltipTrigger>
-                                  <TooltipContent side="bottom">
-                                    <p className="p-1 rounded-md bg-[#3D445C]">
-                                      split
-                                    </p>
-                                  </TooltipContent>
-                                </Tooltip>
-                              </TooltipProvider>
-                              <TooltipProvider>
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <button>
-                                      <RiDeleteBin6Line
-                                        data-action="kill"
-                                        className="action-icon text-sm"
-                                      />
-                                    </button>
-                                  </TooltipTrigger>
-                                  <TooltipContent side="bottom">
-                                    <p className="p-1 rounded-md bg-[#3D445C]">
-                                      delete
-                                    </p>
-                                  </TooltipContent>
-                                </Tooltip>
-                              </TooltipProvider>
+                            <div className="flex items-center gap-2 rhs">
+                              <TooltipWrapper title="split">
+                                <button>
+                                  <BsLayoutSplit
+                                    data-action="split"
+                                    className="text-sm action-icon"
+                                  />
+                                </button>
+                              </TooltipWrapper>
+
+                              <TooltipWrapper title="delete">
+                                <button>
+                                  <RiDeleteBin6Line
+                                    data-action="kill"
+                                    className="text-sm action-icon"
+                                  />
+                                </button>
+                              </TooltipWrapper>
                             </div>
                           </div>
                         );

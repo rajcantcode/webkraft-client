@@ -54,39 +54,52 @@ type WorkspaceStore = {
   lastSelectedEditorIds: string[];
   activeEditorId: string;
   lastPathBeforeClosingEditor: string;
+  // Used when a search result is clicked and we need to scroll to the position
+  searchPosition: {
+    lineNumber: number;
+    column: number;
+    matchIndex: number;
+  } | null;
   setLastPathBeforeClosingEditor: (path: string) => void;
   setWorkspaceData: (
     name: string,
     link: string,
     baseLink: string,
     policy: string,
-    fileStructure: Array<TreeFileNode | TreeFolderNode> | null,
+    fileStructure: Array<TreeFileNode | TreeFolderNode> | null
   ) => void;
   setFileStructure: (
-    fileStructure: Array<TreeFileNode | TreeFolderNode>,
+    fileStructure: Array<TreeFileNode | TreeFolderNode>
   ) => void;
   setSelectedFilePath: (
-    path: SelectedFilePath | ((path: SelectedFilePath) => SelectedFilePath),
+    path: SelectedFilePath | ((path: SelectedFilePath) => SelectedFilePath)
   ) => void;
   setFilesContent: (
-    filesContent: FileContentObj | ((prev: FileContentObj) => FileContentObj),
+    filesContent: FileContentObj | ((prev: FileContentObj) => FileContentObj)
   ) => void;
   setFileTabs: (
-    fileTabs: FileTabs | ((fileTabs: FileTabs) => FileTabs),
+    fileTabs: FileTabs | ((fileTabs: FileTabs) => FileTabs)
   ) => void;
   setLastSelectedFilePaths: (
     lastSelectedFilePaths:
       | LastSelectedFilePaths
-      | ((prev: LastSelectedFilePaths) => LastSelectedFilePaths),
+      | ((prev: LastSelectedFilePaths) => LastSelectedFilePaths)
   ) => void;
   setLastSelectedEditorIds: (
     lastSelectedEditorIds:
       | string[]
-      | ((lastSelectedEditorIds: string[]) => string[]),
+      | ((lastSelectedEditorIds: string[]) => string[])
   ) => void;
   clearWorkspaceData: () => void;
   setEditorIds: (editorIds: string[] | ((prev: string[]) => string[])) => void;
   setActiveEditorId: (editorId: string) => void;
+  setSearchPosition: (
+    position: {
+      lineNumber: number;
+      column: number;
+      matchIndex: number;
+    } | null
+  ) => void;
 };
 
 export const useUserStore = create<UserStore>((set) => ({
@@ -112,11 +125,12 @@ export const useWorkspaceStore = create<WorkspaceStore>(
       lastSelectedEditorIds: [],
       activeEditorId: "",
       lastPathBeforeClosingEditor: "",
+      searchPosition: null,
       setWorkspaceData: (name, link, baseLink, policy, fileStructure) =>
         set(
           { name, link, baseLink, policy, fileStructure },
           undefined,
-          "setWorkspaceData",
+          "setWorkspaceData"
         ),
       setFileStructure: (fileStructure) =>
         set({ fileStructure }, undefined, "setFileStructure"),
@@ -127,7 +141,7 @@ export const useWorkspaceStore = create<WorkspaceStore>(
               typeof path === "function" ? path(state.selectedFilePath) : path,
           }),
           undefined,
-          "setSelectedFilePath",
+          "setSelectedFilePath"
         );
       },
       setFilesContent: (filesContent) => {
@@ -139,7 +153,7 @@ export const useWorkspaceStore = create<WorkspaceStore>(
                 : filesContent,
           }),
           undefined,
-          "setFilesContent",
+          "setFilesContent"
         );
       },
       setFileTabs: (fileTabs) => {
@@ -151,7 +165,7 @@ export const useWorkspaceStore = create<WorkspaceStore>(
                 : fileTabs,
           }),
           undefined,
-          "setFileTabs",
+          "setFileTabs"
         );
       },
       setLastSelectedFilePaths: (lastSelectedFilePaths) => {
@@ -163,7 +177,7 @@ export const useWorkspaceStore = create<WorkspaceStore>(
                 : lastSelectedFilePaths,
           }),
           undefined,
-          "setLastSelectedFilePaths",
+          "setLastSelectedFilePaths"
         );
       },
       setLastSelectedEditorIds: (lastSelectedEditorIds) => {
@@ -175,14 +189,14 @@ export const useWorkspaceStore = create<WorkspaceStore>(
                 : lastSelectedEditorIds,
           }),
           undefined,
-          "setLastSelectedEditorIds",
+          "setLastSelectedEditorIds"
         );
       },
       setLastPathBeforeClosingEditor: (path) => {
         set(
           { lastPathBeforeClosingEditor: path },
           undefined,
-          "setLastPathBeforeClosingEditor",
+          "setLastPathBeforeClosingEditor"
         );
       },
       clearWorkspaceData: () => {
@@ -199,7 +213,7 @@ export const useWorkspaceStore = create<WorkspaceStore>(
             lastSelectedFilePaths: {},
           },
           undefined,
-          "clearWorkspaceData",
+          "clearWorkspaceData"
         );
       },
       setEditorIds: (editorIds) => {
@@ -211,12 +225,14 @@ export const useWorkspaceStore = create<WorkspaceStore>(
                 : editorIds,
           }),
           undefined,
-          "setEditorIds",
+          "setEditorIds"
         );
       },
       setActiveEditorId: (editorId) =>
         set({ activeEditorId: editorId }, undefined, "setActiveEditorId"),
+      setSearchPosition: (position) =>
+        set({ searchPosition: position }, undefined, "setSearchPosition"),
     }),
-    { trace: true },
-  ),
+    { trace: true }
+  )
 );

@@ -9,7 +9,7 @@ const Header = () => {
       <div className="flex items-center lhs">
         <Link to="/home" className="flex items-center">
           <img src={logo} alt="" className="w-[30px] h-[30px] mr-2" />
-          <p>Kodeit</p>
+          <p>WebKraft</p>
         </Link>
       </div>
       <div className="flex mr-1">

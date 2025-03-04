@@ -97,8 +97,8 @@ const TemplateSearchModal = () => {
   useEffect(() => {
     setSearchResults(
       Templates.filter((template) =>
-        template.value.includes(searchValue.toLowerCase()),
-      ),
+        template.value.includes(searchValue.toLowerCase())
+      )
     );
   }, [searchValue]);
 
@@ -123,7 +123,7 @@ const TemplateSearchModal = () => {
         data.workspaceLink,
         baseLinkCopy,
         policyCopy,
-        null,
+        null
         // [data.fileTree]
       );
       navigate(`/workspace/${username}/${data.workspaceName}`);
@@ -138,7 +138,7 @@ const TemplateSearchModal = () => {
     },
   });
   const handleSelectTemplate = (
-    e: React.MouseEvent<HTMLDivElement, MouseEvent>,
+    e: React.MouseEvent<HTMLDivElement, MouseEvent>
   ) => {
     const target = e.target as HTMLElement;
     const templateCard = target.closest(".template-card") as HTMLElement;
@@ -262,11 +262,12 @@ const TemplateSearchModal = () => {
             </div>
             <div className="footer">
               <button
-                className="w-full btn-primary text-[#F5F9FC] bg-[#0053A6] rounded-md hover:bg-[#0079F2] py-2 my-2"
+                className="w-full btn-primary text-[#F5F9FC] bg-[#0053A6] rounded-md hover:bg-[#0079F2] py-2 my-2 flex items-center gap-1 justify-center"
                 disabled={isPending}
                 type="submit"
               >
-                + Create Workspace
+                <span className="font-medium codicon codicon-plus"></span>
+                <span>Create Workspace</span>
               </button>
             </div>
           </div>

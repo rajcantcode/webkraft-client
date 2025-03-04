@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { RenamePathObj, useWorkspaceStore } from "../store";
 import { BsLayoutSplit } from "react-icons/bs";
 import { cn, getFileIcon } from "../lib/utils";

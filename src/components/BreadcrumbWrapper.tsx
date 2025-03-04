@@ -50,7 +50,7 @@ const BreadCrumbWrapper = React.memo(
     breadcrumbTree: Symbol | null;
   }) => {
     const [symbolsToDisplay, setSymbolsToDisplay] = useState<SymbolsToDisplay>(
-      {},
+      {}
     );
     const [openedDropDown, setOpenedDropDown] = useState<string>("");
     const [highlightedSymbol, setHighlightedSymbol] =
@@ -62,7 +62,7 @@ const BreadCrumbWrapper = React.memo(
         symbolsToDisplay: SymbolsToDisplay,
         highlightedSymbol: HighlightedSymbol,
         cursorPos: number,
-        depth = 1,
+        depth = 1
       ) => {
         symbolsToDisplay[depth] = breadcrumbTree.childItems;
         for (const child of breadcrumbTree.childItems) {
@@ -73,14 +73,14 @@ const BreadCrumbWrapper = React.memo(
               symbolsToDisplay,
               highlightedSymbol,
               cursorPos,
-              depth + 1,
+              depth + 1
             );
             // break the loop, cause any other symbol will be inside this symbol
             break;
           }
         }
       },
-      [],
+      []
     );
     useEffect(() => {
       if (!breadcrumbTree) {
@@ -97,7 +97,7 @@ const BreadCrumbWrapper = React.memo(
 
     const symbolsToDisplayKeys = useMemo(
       () => Object.keys(symbolsToDisplay),
-      [symbolsToDisplay],
+      [symbolsToDisplay]
     );
 
     return (
@@ -149,6 +149,7 @@ const BreadCrumbWrapper = React.memo(
                                 socket={socket}
                                 startPath={path}
                                 padLeft={8}
+                                workspaceRef={null}
                               />
                             </DropdownMenuItem>
                           </DropdownMenuContent>
@@ -268,7 +269,7 @@ const BreadCrumbWrapper = React.memo(
         <ScrollBar orientation="horizontal" />
       </ScrollArea>
     );
-  },
+  }
 );
 
 BreadCrumbWrapper.displayName = "BreadCrumbWrapper";

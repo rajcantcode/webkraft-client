@@ -11,24 +11,26 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Input } from "./ui/Input";
 import DeleteFolderModal from "./DeleteConfirmationModal";
 import { createPortal } from "react-dom";
+import { TooltipWrapper } from "./ui/ToolTip";
+import { useWorkspaceStore } from "../store";
 
 type HandleRename = (
   pni: number,
   depth: number,
   path: string,
   newName: string,
-  type: "file" | "folder",
+  type: "file" | "folder"
 ) => void;
 type HandleMoveNodes = (sourcePath: string, destinationPath: string) => void;
 type HandleDelete = (
   path: string,
   pni: number,
-  type: "file" | "folder",
+  type: "file" | "folder"
 ) => void;
 type CheckIfNameIsUnique = (
   pni: number,
   depth: number,
-  newName: string,
+  newName: string
 ) => boolean;
 type InputState = {
   value: string;
@@ -39,7 +41,7 @@ type GetChildren = (path: string, depth: number) => void;
 type InsertInputNode = (
   index: number,
   operation: "add-file" | "add-folder",
-  depth: number,
+  depth: number
 ) => void;
 type DeleteNamesSet = (parentIndex: number) => void;
 type ExpandNode = (path: string) => void;
@@ -64,6 +66,7 @@ const TreeFolder = ({
   isNodeModulesChildrenReceived,
   showEditOptions,
   scrollRef,
+  workspaceRef,
 }: {
   node: FlattenedTreeFolderNode;
   padLeft: number;
@@ -83,6 +86,7 @@ const TreeFolder = ({
   }>;
   showEditOptions: boolean;
   scrollRef: React.RefObject<HTMLDivElement>;
+  workspaceRef: React.RefObject<HTMLDivElement> | null;
 }) => {
   const { isExpanded: isOpen } = node;
   const [inputState, setInputState] = useState<InputState>({
@@ -90,6 +94,7 @@ const TreeFolder = ({
     show: false,
     error: "",
   });
+  const workspaceName = useWorkspaceStore((state) => state.name);
   const inputRef = useRef<HTMLInputElement>(null);
   const timer = useRef<{
     dragCounter: number;
@@ -109,7 +114,7 @@ const TreeFolder = ({
   }, [inputState.show]);
 
   const handleFolderClick = (
-    e: React.MouseEvent<HTMLDivElement, MouseEvent>,
+    e: React.MouseEvent<HTMLDivElement, MouseEvent>
   ) => {
     e.stopPropagation();
 
@@ -122,7 +127,13 @@ const TreeFolder = ({
         actionSelected !== "del-folder" &&
         actionSelected !== "rename"
       ) {
+        console.log("Node is not expanded, expanding the node");
         expandNode(node.path);
+        // if (actionSelected === "add-file") {
+        //   insertInputNode(node.index, "add-file", node.depth);
+        // } else if (actionSelected === "add-folder") {
+        //   insertInputNode(node.index, "add-folder", node.depth);
+        // }
       }
       switch (actionSelected) {
         case "rename":
@@ -181,7 +192,7 @@ const TreeFolder = ({
       const isNameUnique = checkIfNameIsUnique(
         node.pni,
         node.depth,
-        e.target.value,
+        e.target.value
       );
       if (!isNameUnique) {
         setInputState((prev) => ({
@@ -193,14 +204,14 @@ const TreeFolder = ({
       }
       setInputState((prev) => ({ ...prev, value: e.target.value, error: "" }));
     },
-    [node, setInputState],
+    [node, setInputState]
   );
 
   const handleInputSubmit = useCallback(
     (
       e:
         | React.FormEvent<HTMLFormElement>
-        | React.FocusEvent<HTMLInputElement, Element>,
+        | React.FocusEvent<HTMLInputElement, Element>
     ) => {
       e?.stopPropagation();
       e?.preventDefault();
@@ -221,7 +232,7 @@ const TreeFolder = ({
           node.depth,
           node.path,
           inputState.value,
-          node.type,
+          node.type
         );
         setInputState({
           value: "",
@@ -249,7 +260,7 @@ const TreeFolder = ({
         }
       }
     },
-    [node, inputState, setInputState],
+    [node, inputState, setInputState]
   );
 
   const handleDrop = useCallback(
@@ -288,7 +299,7 @@ const TreeFolder = ({
         console.error(error);
       }
     },
-    [node.path],
+    [node.path]
   );
 
   const handleDragEnter = useCallback(
@@ -314,7 +325,7 @@ const TreeFolder = ({
         }
       }
     },
-    [node, isOpen],
+    [node, isOpen]
   );
 
   const handleDragLeave = useCallback((e: React.DragEvent<HTMLDivElement>) => {
@@ -338,11 +349,25 @@ const TreeFolder = ({
 
   const handleDragStart = useCallback(
     (e: React.DragEvent<HTMLDivElement>) => {
+      e.currentTarget.style.boxShadow = "none";
       e.dataTransfer.setData("text/plain", node.path);
+      e.currentTarget.style.opacity = "0.3";
       e.dataTransfer.effectAllowed = "move";
+      (
+        e.currentTarget.querySelector(".edit-options") as HTMLElement
+      )?.style.setProperty("display", "none");
     },
-    [node],
+    [node]
   );
+
+  const handleDragEnd = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+    e.currentTarget.style.removeProperty("box-shadow");
+    console.log("drag end");
+    e.currentTarget.style.opacity = "1";
+    (
+      e.currentTarget.querySelector(".edit-options") as HTMLElement
+    )?.style.removeProperty("display");
+  }, []);
 
   const { icon, openIcon } = getFolderIcon(node.name);
   return (
@@ -363,8 +388,9 @@ const TreeFolder = ({
         <div
           className="flex items-center justify-between folder-details group text-sm hover:bg-[#1C2333] focus:bg-[#1C2333] focus:shadow-[0_0_0_2px_#0079F2] rounded-md w-[99%] px-1 ml-0.5 h-[90%]"
           onClick={handleFolderClick}
-          draggable={!inputState.show}
+          draggable={workspaceName !== node.name && !inputState.show}
           onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
           tabIndex={0}
         >
           {inputState.show ? (
@@ -389,7 +415,7 @@ const TreeFolder = ({
               {inputState.error && scrollRef.current
                 ? createPortal(
                     <div
-                      className="err-container absolute"
+                      className="absolute err-container"
                       style={{
                         transform: `translateY(${start + itemSize}px)`,
                         width: `calc(100% - ${padLeft}px)`,
@@ -406,14 +432,16 @@ const TreeFolder = ({
                         </p>
                       </div>
                     </div>,
-                    scrollRef.current,
+                    scrollRef.current
                   )
                 : null}
             </form>
           ) : (
             <>
               <div
-                className={`flex items-center gap-2 name w-[calc(100%-80px)] sm:w-full ${showEditOptions ? "sm:group-hover:w-[calc(100%-80px)]" : ""}`}
+                className={`flex items-center gap-2 name w-[calc(100%-80px)] sm:w-full ${
+                  showEditOptions ? "sm:group-hover:w-[calc(100%-80px)]" : ""
+                }`}
               >
                 <img
                   src={isOpen ? openIcon : icon}
@@ -425,23 +453,48 @@ const TreeFolder = ({
                 </p>
               </div>
               {showEditOptions ? (
-                <div className="flex items-center gap-2 sm:transition-opacity duration-200 sm:opacity-0 actions-container sm:group-hover:opacity-100 sm:max-w-0 sm:group-hover:max-w-[80px] flex-nowrap max-w-[80px]">
-                  <AiOutlineEdit
-                    data-action="rename"
-                    className="transition-transform hover:scale-[1.1] scale-100 action-icon"
-                  />
-                  <AiOutlineFileAdd
-                    data-action="add-file"
-                    className="transition-transform hover:scale-[1.1] scale-100 action-icon"
-                  />
-                  <AiOutlineFolderAdd
-                    data-action="add-folder"
-                    className="transition-transform hover:scale-[1.1] scale-100 action-icon"
-                  />
-                  <AiOutlineDelete
-                    data-action="del-folder"
-                    className="transition-transform hover:scale-[1.1] scale-100 action-icon"
-                  />
+                <div className="flex items-center gap-2 actions-container sm:group-hover:flex sm:hidden flex-nowrap max-w-[80px] edit-options">
+                  <TooltipWrapper title="Rename" containerRef={workspaceRef}>
+                    <div
+                      data-action="rename"
+                      className="transition-transform hover:scale-[1.1] scale-100 action-icon"
+                    >
+                      <AiOutlineEdit />
+                    </div>
+                  </TooltipWrapper>
+
+                  <TooltipWrapper title="Add file" containerRef={workspaceRef}>
+                    <div
+                      data-action="add-file"
+                      className="transition-transform hover:scale-[1.1] scale-100 action-icon"
+                    >
+                      <AiOutlineFileAdd />
+                    </div>
+                  </TooltipWrapper>
+
+                  <TooltipWrapper
+                    title="Add folder"
+                    containerRef={workspaceRef}
+                  >
+                    <div
+                      data-action="add-folder"
+                      className="transition-transform hover:scale-[1.1] scale-100 action-icon"
+                    >
+                      <AiOutlineFolderAdd />
+                    </div>
+                  </TooltipWrapper>
+
+                  <TooltipWrapper
+                    title="Delete folder"
+                    containerRef={workspaceRef}
+                  >
+                    <div
+                      data-action="del-folder"
+                      className="transition-transform hover:scale-[1.1] scale-100 action-icon"
+                    >
+                      <AiOutlineDelete />
+                    </div>
+                  </TooltipWrapper>
                 </div>
               ) : null}
             </>

@@ -54,10 +54,11 @@ const Home = () => {
           <h1 className="font-bold text-[2em] mb-5">Home</h1>
 
           <button
-            className="text-xl bg-[#0053A6] p-1 rounded-md mb-8 hover:bg-[#0079F2]"
+            className="text-xl bg-[#0053A6] p-1 rounded-md mb-8 hover:bg-[#0079F2] flex items-center gap-1"
             onClick={showModal}
           >
-            + Create workspace
+            <span className="font-medium codicon codicon-plus"></span>{" "}
+            <span>Create Workspace</span>
           </button>
 
           <div className="workspaces">

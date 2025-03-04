@@ -81,6 +81,8 @@ const Workspace = () => {
     host: socketLink,
   });
 
+  const workspaceContainerRef = useRef<HTMLDivElement | null>(null);
+
   // Doing it this way beacause I don't want the state updates of fileStructure in this component. Just need the data once.
   const { fileStructure } = useWorkspaceStore.getState();
   // useLifecycles(
@@ -271,7 +273,7 @@ const Workspace = () => {
   if (workspaceLoaded && fileStructureReceived) {
     const editorSize = 100 / editorIds.length;
     return (
-      <div className="flex h-full bg-black">
+      <div className="flex h-full bg-black" ref={workspaceContainerRef}>
         <SidebarNav
           sidebarNavState={sidebarNavState}
           setSidebarNavState={setSidebarNavState}
@@ -297,6 +299,7 @@ const Workspace = () => {
               padLeft={8}
               fileFetchStatus={fileFetchStatus.current}
               socket={socket}
+              workspaceRef={workspaceContainerRef}
               className={`${sidebarNavState.files ? "block" : "hidden"}`}
             />
             <ProjectSearch

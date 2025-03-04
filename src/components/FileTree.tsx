@@ -1,4 +1,10 @@
-import React, { useEffect, useState, useCallback, useRef } from "react";
+import React, {
+  useEffect,
+  useState,
+  useCallback,
+  useRef,
+  useMemo,
+} from "react";
 import {
   editorSupportedLanguages,
   FileContentObj,
@@ -33,6 +39,7 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 import TreeInput from "./TreeInput.js";
 import { createPortal } from "react-dom";
 import { cn } from "../lib/utils.js";
+import debounce from "lodash.debounce";
 
 type ExpandedChildrenLength = { path: string; length: number };
 type DepthAndStartInfo = {
@@ -141,12 +148,14 @@ const FileTree = ({
   // path from which to start the flattened tree, is only passed when used in breadcrumbs
   startPath = "",
   className = "",
+  workspaceRef,
 }: {
   padLeft: number;
   fileFetchStatus: { [key: string]: boolean };
   socket: Socket | null;
   startPath?: string;
   className?: string;
+  workspaceRef: React.RefObject<HTMLDivElement> | null;
 }) => {
   const fileTree = useWorkspaceStore((state) => state.fileStructure);
   const setFileTree = useWorkspaceStore((state) => state.setFileStructure);
@@ -587,6 +596,10 @@ const FileTree = ({
         path: `${flattenedTree[index].path}/input`,
       };
       expandedNodesRef.current[flattenedTree[index].path].childCount++;
+      const temp = expandedChildrenLengthRef.current.find(
+        (node) => node.path === flattenedTree[index].path
+      );
+      if (temp) temp.length++;
       const flattenedTreeCopy = [...flattenedTree];
       flattenedTreeCopy.splice(index + 1, 0, inputNode);
       setFlattenedTree(flattenedTreeCopy);
@@ -599,6 +612,10 @@ const FileTree = ({
       if (!flattenedTree) return;
       // remove element at index pni + 1, from flattenedTree
       expandedNodesRef.current[flattenedTree[pni].path].childCount--;
+      const temp = expandedChildrenLengthRef.current.find(
+        (node) => node.path === flattenedTree[pni].path
+      );
+      if (temp) temp.length--;
       const flattenedTreeCopy = [...flattenedTree];
       flattenedTreeCopy.splice(pni + 1, 1);
       setFlattenedTree(flattenedTreeCopy);
@@ -1184,6 +1201,7 @@ const FileTree = ({
   );
 
   const getButtonHeight = useCallback((path: string, childCount: number) => {
+    // debugger;
     let totalChildrenToCover = 0;
     expandedChildrenLengthRef.current.forEach((node) => {
       if (node.path.startsWith(path) && node.path !== path) {
@@ -1200,6 +1218,12 @@ const FileTree = ({
     // console.log(e.currentTarget);
   };
 
+  const printExpandedNodesRef = useMemo(() => {
+    return debounce((nodes: ExpandedNode) => {
+      console.log("printing expanded nodes ref");
+      console.log(nodes);
+    }, 500);
+  }, []);
   const getFolderPath = useCallback((filePath: string) => {
     const lastSlashIndex = filePath.lastIndexOf("/");
     return lastSlashIndex === -1 ? filePath : filePath.slice(0, lastSlashIndex);
@@ -1260,6 +1284,7 @@ const FileTree = ({
                 isNodeModulesChildrenReceived={isNodeModulesChildrenReceived}
                 showEditOptions={startPath ? false : true}
                 scrollRef={scrollRef}
+                workspaceRef={workspaceRef}
               />
             );
           } else if (node.type === "file") {
@@ -1277,6 +1302,7 @@ const FileTree = ({
                 checkIfNameIsUnique={checkIfNameIsUnique}
                 showEditOptions={startPath ? false : true}
                 scrollRef={scrollRef}
+                workspaceRef={workspaceRef}
               />
             );
           } else if (node.type === "input") {
@@ -1299,22 +1325,25 @@ const FileTree = ({
             return null;
           }
         })}
-        {Object.keys(expandedNodesRef.current).map((path) => {
+        {Object.keys(expandedNodesRef.current).map((path, i) => {
           const { start, depth, childCount } = expandedNodesRef.current[path];
 
-          if (
-            start === 0 &&
-            currSelectedFilePath &&
-            path === getFolderPath(currSelectedFilePath) &&
-            flattenedTree[0].path !== path
-          ) {
-            return null;
+          if (i === 0) {
+            printExpandedNodesRef(expandedNodesRef.current);
           }
+          // if (
+          //   start === 0 &&
+          //   currSelectedFilePath &&
+          //   path === getFolderPath(currSelectedFilePath) &&
+          //   flattenedTree[0].path !== path
+          // ) {
+          //   return null;
+          // }
           const padding = (depth - depthToSubtractRef.current) * padLeft;
           const buttonHeight = getButtonHeight(path, childCount);
           return (
             <button
-              className={`absolute top-0 left-0 w-[3px] group ${path}`}
+              className={`absolute top-0 left-0 w-2 group ${path}`}
               key={path}
               style={{
                 height: `${buttonHeight}px`,

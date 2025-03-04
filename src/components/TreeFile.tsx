@@ -8,6 +8,7 @@ import { IoMdSend } from "react-icons/io";
 import { useWorkspaceStore } from "../store";
 import { createPortal } from "react-dom";
 import { nanoid } from "nanoid";
+import { TooltipWrapper } from "./ui/ToolTip";
 
 type HandleRename = (
   pni: number,
@@ -43,6 +44,7 @@ const TreeFile = ({
   deleteNamesSet,
   showEditOptions,
   scrollRef,
+  workspaceRef,
 }: {
   node: FlattenedTreeFileNode;
   padLeft: number;
@@ -55,6 +57,7 @@ const TreeFile = ({
   deleteNamesSet: DeleteNamesSet;
   showEditOptions: boolean;
   scrollRef: React.RefObject<HTMLDivElement>;
+  workspaceRef: React.RefObject<HTMLDivElement> | null;
 }) => {
   const [inputState, setInputState] = useState({
     show: false,
@@ -127,11 +130,25 @@ const TreeFile = ({
 
   const handleDragStart = useCallback(
     (e: React.DragEvent<HTMLDivElement>) => {
+      e.currentTarget.style.boxShadow = "none";
       e.dataTransfer.setData("text/plain", node.path);
+      e.currentTarget.style.opacity = "0.3";
       e.dataTransfer.effectAllowed = "copyMove";
+      (
+        e.currentTarget.querySelector(".edit-options") as HTMLElement
+      )?.style.setProperty("display", "none");
     },
     [node]
   );
+
+  const handleDragEnd = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+    e.currentTarget.style.removeProperty("box-shadow");
+    console.log("drag end");
+    e.currentTarget.style.opacity = "1";
+    (
+      e.currentTarget.querySelector(".edit-options") as HTMLElement
+    )?.style.removeProperty("display");
+  }, []);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     e.stopPropagation();
@@ -255,13 +272,14 @@ const TreeFile = ({
       onDragOver={handleDragOver}
     >
       <div
-        className={`pl-[${padLeft}px] flex items-center w-[98%] file-details group justify-between text-sm ${
+        className={`pl-[${padLeft}px] flex items-center w-[98%] file-details group justify-between text-sm transition-opacity duration-200 ${
           selectedFilePath[activeEditorId] === node.path ? "bg-[#2B3245]" : ""
         } rounded-md hover:bg-[#1C2333] focus:shadow-[0_0_0_2px_#0079F2] px-1 ml-0.5 h-[90%]`}
         onClick={handleFileClick}
         tabIndex={0}
         draggable={!inputState.show}
         onDragStart={handleDragStart}
+        onDragEnd={handleDragEnd}
       >
         {inputState.show ? (
           <form
@@ -320,15 +338,24 @@ const TreeFile = ({
               </p>
             </div>
             {showEditOptions ? (
-              <div className="flex items-center gap-2 transition-opacity duration-200 sm:opacity-0 actions-container sm:group-hover:opacity-100 sm:max-w-0 sm:group-hover:max-w-[40px] flex-nowrap max-w-[40px]">
-                <AiOutlineEdit
-                  data-action="rename"
-                  className="transition-transform hover:scale-[1.1] scale-100 action-icon"
-                />
-                <AiOutlineDelete
-                  data-action="del-file"
-                  className="transition-transform hover:scale-[1.1] scale-100 action-icon"
-                />
+              <div className="flex items-center gap-2 actions-container sm:hidden sm:group-hover:flex flex-nowrap max-w-[40px] edit-options">
+                <TooltipWrapper title="Rename" containerRef={workspaceRef}>
+                  <div
+                    data-action="rename"
+                    className="transition-transform hover:scale-[1.1] scale-100 action-icon"
+                  >
+                    <AiOutlineEdit />
+                  </div>
+                </TooltipWrapper>
+
+                <TooltipWrapper title="Delete file" containerRef={workspaceRef}>
+                  <div
+                    data-action="del-file"
+                    className="transition-transform hover:scale-[1.1] scale-100 action-icon"
+                  >
+                    <AiOutlineDelete />
+                  </div>
+                </TooltipWrapper>
               </div>
             ) : null}
           </>
@@ -352,3 +379,31 @@ const TreeFile = ({
 };
 
 export default TreeFile;
+
+// AiOutlineEdit
+{
+  /* <div
+  data-radix-popper-content-wrapper=""
+  style="position: fixed; left: 0px; top: 0px; transform: translate(0px, -200%); min-width: max-content; will-change: transform; z-index: 50;"
+>
+  <div
+    data-side="bottom"
+    data-align="center"
+    data-state="delayed-open"
+    class="z-50 overflow-hidden rounded-md bg-primary px-3 py-1.5 text-xs text-primary-foreground animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2"
+    style="--radix-tooltip-content-transform-origin: var(--radix-popper-transform-origin); --radix-tooltip-content-available-width: var(--radix-popper-available-width); --radix-tooltip-content-available-height: var(--radix-popper-available-height); --radix-tooltip-trigger-width: var(--radix-popper-anchor-width); --radix-tooltip-trigger-height: var(--radix-popper-anchor-height); animation: auto ease 0s 1 normal none running none;"
+  >
+    <p class="p-1 rounded-md bg-[#3D445C]">Rename</p>
+    <span
+      id="radix-:r27:"
+      role="tooltip"
+      style="position: absolute; border: 0px; width: 1px; height: 1px; padding: 0px; margin: -1px; overflow: hidden; clip: rect(0px, 0px, 0px, 0px); white-space: nowrap; overflow-wrap: normal;"
+    >
+      <p class="p-1 rounded-md bg-[#3D445C]">Rename</p>
+    </span>
+  </div>
+</div>; */
+}
+
+// Codicon
+//

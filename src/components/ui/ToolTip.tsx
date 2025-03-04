@@ -2,12 +2,15 @@ import * as React from "react";
 import * as TooltipPrimitive from "@radix-ui/react-tooltip";
 
 import { cn } from "../../lib/utils";
+import { createPortal } from "react-dom";
 
 const TooltipProvider = TooltipPrimitive.Provider;
 
 const Tooltip = TooltipPrimitive.Root;
 
 const TooltipTrigger = TooltipPrimitive.Trigger;
+
+const TooltipPortal = TooltipPrimitive.Portal;
 
 const TooltipContent = React.forwardRef<
   React.ElementRef<typeof TooltipPrimitive.Content>,
@@ -29,18 +32,28 @@ const TooltipWrapper = ({
   title,
   children,
   side = "bottom",
+  containerRef,
 }: {
   title: string;
   children: React.ReactNode;
   side?: "top" | "right" | "bottom" | "left";
+  containerRef?: React.RefObject<HTMLDivElement> | null;
 }) => {
   return (
     <TooltipProvider>
       <Tooltip>
         <TooltipTrigger asChild>{children}</TooltipTrigger>
-        <TooltipContent side={side}>
-          <p className="p-1 rounded-md bg-[#3D445C]">{title}</p>
-        </TooltipContent>
+        {containerRef && containerRef.current ? (
+          <TooltipPortal container={containerRef.current}>
+            <TooltipContent side={side}>
+              <p className="p-1 rounded-md bg-[#3D445C]">{title}</p>
+            </TooltipContent>
+          </TooltipPortal>
+        ) : (
+          <TooltipContent side={side}>
+            <p className="p-1 rounded-md bg-[#3D445C]">{title}</p>
+          </TooltipContent>
+        )}
       </Tooltip>
     </TooltipProvider>
   );

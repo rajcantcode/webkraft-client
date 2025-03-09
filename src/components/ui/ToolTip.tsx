@@ -2,7 +2,6 @@ import * as React from "react";
 import * as TooltipPrimitive from "@radix-ui/react-tooltip";
 
 import { cn } from "../../lib/utils";
-import { createPortal } from "react-dom";
 
 const TooltipProvider = TooltipPrimitive.Provider;
 
@@ -28,36 +27,38 @@ const TooltipContent = React.forwardRef<
 ));
 TooltipContent.displayName = TooltipPrimitive.Content.displayName;
 
-const TooltipWrapper = ({
-  title,
-  children,
-  side = "bottom",
-  containerRef,
-}: {
-  title: string;
-  children: React.ReactNode;
-  side?: "top" | "right" | "bottom" | "left";
-  containerRef?: React.RefObject<HTMLDivElement> | null;
-}) => {
-  return (
-    <TooltipProvider>
-      <Tooltip>
-        <TooltipTrigger asChild>{children}</TooltipTrigger>
-        {containerRef && containerRef.current ? (
-          <TooltipPortal container={containerRef.current}>
+const TooltipWrapper = React.memo(
+  ({
+    title,
+    children,
+    side = "bottom",
+    containerRef,
+  }: {
+    title: string;
+    children: React.ReactNode;
+    side?: "top" | "right" | "bottom" | "left";
+    containerRef?: React.RefObject<HTMLDivElement> | null;
+  }) => {
+    return (
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>{children}</TooltipTrigger>
+          {containerRef && containerRef.current ? (
+            <TooltipPortal container={containerRef.current}>
+              <TooltipContent side={side}>
+                <p className="p-1 rounded-md bg-[#3D445C]">{title}</p>
+              </TooltipContent>
+            </TooltipPortal>
+          ) : (
             <TooltipContent side={side}>
               <p className="p-1 rounded-md bg-[#3D445C]">{title}</p>
             </TooltipContent>
-          </TooltipPortal>
-        ) : (
-          <TooltipContent side={side}>
-            <p className="p-1 rounded-md bg-[#3D445C]">{title}</p>
-          </TooltipContent>
-        )}
-      </Tooltip>
-    </TooltipProvider>
-  );
-};
+          )}
+        </Tooltip>
+      </TooltipProvider>
+    );
+  }
+);
 
 export {
   Tooltip,

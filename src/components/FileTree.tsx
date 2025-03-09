@@ -14,9 +14,11 @@ import {
   FlattenedTree,
   InputNode,
   FileContent,
+  tempInputInfo,
 } from "../constants.js";
 import TreeFolder from "./TreeFolder.js";
 import TreeFile from "./TreeFile.js";
+import LoadingNode from "./LoadingNode.js";
 import { RenamePathObj, useWorkspaceStore } from "../store.js";
 import "../styles/template-search-modal.css";
 import {
@@ -37,9 +39,9 @@ import {
 } from "../helpers.js";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import TreeInput from "./TreeInput.js";
-import { createPortal } from "react-dom";
 import { cn } from "../lib/utils.js";
 import debounce from "lodash.debounce";
+import { LoadingNode as LoadingNodeType } from "../constants.js";
 
 type ExpandedChildrenLength = { path: string; length: number };
 type DepthAndStartInfo = {
@@ -549,6 +551,7 @@ const FileTree = ({
           const currNode = flattenedTree[i];
           if (
             currNode.type !== "input" &&
+            currNode.type !== "loading" &&
             currNode.pni === pni &&
             currNode.depth === depthCopy
           ) {
@@ -584,23 +587,38 @@ const FileTree = ({
   );
 
   const insertInputNode = useCallback(
-    (index: number, operation: "add-file" | "add-folder", depth: number) => {
-      if (!flattenedTree) return;
+    (
+      index: number,
+      operation: "add-file" | "add-folder",
+      depth: number,
+      flatTree = flattenedTree,
+      value?: string,
+      error?: string
+    ) => {
+      if (!flatTree) return;
+      const inpNodePath = `${flatTree[index].path}/input`;
       const inputNode: InputNode = {
         type: "input",
         operation,
         pni: index,
-        value: "",
+        value: value || "",
         depth: depth + 1,
-        error: "",
-        path: `${flattenedTree[index].path}/input`,
+        error: error || "",
+        path: inpNodePath,
       };
-      expandedNodesRef.current[flattenedTree[index].path].childCount++;
+      expandedNodesRef.current[flatTree[index].path].childCount++;
       const temp = expandedChildrenLengthRef.current.find(
-        (node) => node.path === flattenedTree[index].path
+        (node) => node.path === flatTree[index].path
       );
       if (temp) temp.length++;
-      const flattenedTreeCopy = [...flattenedTree];
+      if (!tempInputInfo[inpNodePath]) {
+        tempInputInfo[inpNodePath] = {
+          operation,
+          value: "",
+          error: "",
+        };
+      }
+      const flattenedTreeCopy = [...flatTree];
       flattenedTreeCopy.splice(index + 1, 0, inputNode);
       setFlattenedTree(flattenedTreeCopy);
     },
@@ -624,7 +642,7 @@ const FileTree = ({
   );
 
   const expandNode = useCallback(
-    async (...paths: (string | string[])[]) => {
+    (...paths: (string | string[])[]) => {
       if (!fileTree) return;
 
       const fileTreeCopy = [...fileTree];
@@ -633,15 +651,16 @@ const FileTree = ({
         const node = findNode(fileTreeCopy, path);
         if (!node || node.type === "file") return;
         if (node.children.length > 0) {
+          // Load content of files
           try {
             if (node.path.includes("node_modules")) {
-              await loadFilesOfNodeModulesFolder(
+              loadFilesOfNodeModulesFolder(
                 node,
                 fileFetchStatus,
                 socket?.io.opts.host!
               );
             } else {
-              await loadFilesOfFolder(node, fileFetchStatus);
+              loadFilesOfFolder(node, fileFetchStatus);
             }
           } catch (error) {
             console.error(`Error fetching files of folder ${node.path}`, error);
@@ -664,7 +683,10 @@ const FileTree = ({
       expandedChildrenLengthRef.current = expandedChildrenLength;
       expandedNodesRef.current = expandedNodes;
       setFlattenedTree(flattenedTree);
+      console.log("setted expanded state");
       setNodeExpandedState(newNodeExpandedState);
+      // Useful when user clicks on add-file or add-folder button, when the node is closed, so we get the latest flattenedTree, and can insert the input node at the desired location
+      return flattenedTree;
     },
     [
       setFlattenedTree,
@@ -834,18 +856,176 @@ const FileTree = ({
     );
   };
 
+  const insertLoadingNode = useCallback(
+    (
+      nodeIndex: number,
+      flatTree: FlattenedTree,
+      inputOp?: "add-file" | "add-folder"
+    ) => {
+      // Insert 3 loading nodes after the nodeIndex
+
+      const node = flatTree[nodeIndex];
+      if (node.type !== "folder") return;
+      const inpNodePath = `${node.path}/input`;
+      const loadingNodes: Array<LoadingNodeType | InputNode> = inputOp
+        ? [
+            {
+              type: "input",
+              operation: inputOp,
+              pni: nodeIndex,
+              value: "",
+              depth: node.depth + 1,
+              error: "",
+              path: inpNodePath,
+            },
+            {
+              type: "loading",
+              depth: node.depth + 1,
+              pni: nodeIndex,
+              path: `${node.path}/loading1`,
+            },
+            {
+              type: "loading",
+              depth: node.depth + 1,
+              pni: nodeIndex,
+              path: `${node.path}/loading2`,
+            },
+            {
+              type: "loading",
+              depth: node.depth + 1,
+              pni: nodeIndex,
+              path: `${node.path}/loading3`,
+            },
+          ]
+        : [
+            {
+              type: "loading",
+              depth: node.depth + 1,
+              pni: nodeIndex,
+              path: `${node.path}/loading1`,
+            },
+            {
+              type: "loading",
+              depth: node.depth + 1,
+              pni: nodeIndex,
+              path: `${node.path}/loading2`,
+            },
+            {
+              type: "loading",
+              depth: node.depth + 1,
+              pni: nodeIndex,
+              path: `${node.path}/loading3`,
+            },
+          ];
+      node.isExpanded = true;
+      const flattenedTreeCopy = [...flatTree];
+      flattenedTreeCopy.splice(nodeIndex + 1, 0, ...loadingNodes);
+
+      if (inputOp && !tempInputInfo[inpNodePath]) {
+        tempInputInfo[inpNodePath] = {
+          operation: inputOp,
+          value: "",
+          error: "",
+        };
+      }
+
+      // Adjust pni and index of nodes after the loading nodes
+      const travStart = inputOp ? nodeIndex + 5 : nodeIndex + 4;
+      const incr = inputOp ? 4 : 3;
+      for (let i = travStart; i < flattenedTreeCopy.length; i++) {
+        const node = flattenedTreeCopy[i];
+        if (node.type === "folder") {
+          // If the pni is greater than nodeIndex, then only increment it by 3
+          if (node.pni > nodeIndex) {
+            node.pni += incr;
+          }
+          node.index += incr;
+        }
+        if (node.type === "file") {
+          // If the pni is greater than nodeIndex, then only increment it by 3
+          if (node.pni > nodeIndex) {
+            node.pni += incr;
+          }
+        }
+      }
+
+      setFlattenedTree(flattenedTreeCopy);
+    },
+    []
+  );
+
   const getChildren = useCallback(
-    (path: string, depth: number) => {
+    (
+      path: string,
+      depth: number,
+      nodeIndex: number,
+      start: number,
+      inputOp?: "add-file" | "add-folder"
+    ) => {
+      if (!flattenedTree || !fileTree) {
+        return;
+      }
       if (isNodeModulesChildrenReceived.current[path]) {
         expandNode(path);
         return;
       }
+
+      // Insert 3 loading nodes after the nodeIndex
+      insertLoadingNode(nodeIndex, flattenedTree, inputOp);
+      // Expand the node
+      // NEC = Node ExpandedState Copy
+      const NEC = { ...nodeExpandedState };
+      const nodePath = flattenedTree[nodeIndex].path;
+      NEC[nodePath] = true;
+      setNodeExpandedState(NEC);
+      if (expandedNodesRef.current[nodePath]) {
+        expandedNodesRef.current[nodePath].childCount += inputOp ? 4 : 3;
+      } else {
+        expandedNodesRef.current[nodePath] = {
+          childCount: inputOp ? 4 : 3,
+          depth: flattenedTree[nodeIndex].depth,
+          start: start,
+        };
+      }
+
+      const temp = expandedChildrenLengthRef.current.find(
+        (node) => node.path === nodePath
+      );
+      if (temp) temp.length += inputOp ? 4 : 3;
+      if (!temp) {
+        expandedChildrenLengthRef.current.push({
+          path: nodePath,
+          length: inputOp ? 4 : 3,
+        });
+      }
+
       socket?.emit(
         "get:children",
         { path, depth: ++depth },
         (error: Error | null, data: Array<TreeFileNode | TreeFolderNode>) => {
           if (error) {
             isNodeModulesChildrenReceived.current[path] = false;
+
+            const fileTreeCopy = [...fileTree];
+            const nodeExpandedStateCopy = { ...nodeExpandedState };
+            nodeExpandedStateCopy[nodePath] = false;
+            const {
+              flattenedTree: newFlattenedTree,
+              nodeExpandedState: newNodeExpandedState,
+              expandedChildrenLength,
+              expandedNodes,
+            } = startPath
+              ? flattenTree(
+                  fileTreeCopy,
+                  nodeExpandedStateCopy,
+                  startPath,
+                  true
+                )
+              : flattenTree(fileTreeCopy, nodeExpandedStateCopy);
+            expandedChildrenLengthRef.current = expandedChildrenLength;
+            expandedNodesRef.current = expandedNodes;
+            setFlattenedTree(newFlattenedTree);
+            setNodeExpandedState(newNodeExpandedState);
             console.error("Error getting children", error);
             return;
           }
@@ -856,7 +1036,15 @@ const FileTree = ({
           parentNode.children = data;
           // parentNode.isExpanded = true;
           const nodeExpandedStateCopy = { ...nodeExpandedState };
-          nodeExpandedStateCopy[parentNode.path] = true;
+
+          if (expandedNodesRef.current[nodePath]) {
+            // Node should be expanded
+            nodeExpandedStateCopy[nodePath] = true;
+          } else {
+            //Node should not be expanded
+            nodeExpandedStateCopy[nodePath] = false;
+          }
+
           loadFilesOfNodeModulesFolder(
             parentNode,
             fileFetchStatus,
@@ -864,7 +1052,7 @@ const FileTree = ({
           );
           setFileTree(fileTreeCopy);
           const {
-            flattenedTree,
+            flattenedTree: newFlattenedTree,
             nodeExpandedState: newNodeExpandedState,
             expandedChildrenLength,
             expandedNodes,
@@ -873,12 +1061,38 @@ const FileTree = ({
             : flattenTree(fileTreeCopy, nodeExpandedStateCopy);
           expandedChildrenLengthRef.current = expandedChildrenLength;
           expandedNodesRef.current = expandedNodes;
-          setFlattenedTree(flattenedTree);
+
+          // If there was an input node before, then we again insert it after the children are received
+          const tempInpNode = tempInputInfo[`${nodePath}/input`];
+          if (expandedNodesRef.current[nodePath] && inputOp && tempInpNode) {
+            // insertInputNode will set the flattenedTree after inserting the input node
+            insertInputNode(
+              nodeIndex,
+              inputOp,
+              depth - 1, // decrementing one, because while sending the depth to the server, we incremented it by 1
+              newFlattenedTree,
+              tempInpNode.value,
+              tempInpNode.error
+            );
+          } else {
+            setFlattenedTree(newFlattenedTree);
+          }
           setNodeExpandedState(newNodeExpandedState);
         }
       );
     },
-    [socket, fileTree, nodeExpandedState, startPath]
+    [
+      socket,
+      fileTree,
+      nodeExpandedState,
+      startPath,
+      flattenedTree,
+      expandNode,
+      insertLoadingNode,
+      fileFetchStatus,
+      insertInputNode,
+      setFileTree,
+    ]
   );
   const handleDelete = useCallback(
     (path: string, pni: number, type: "file" | "folder") => {
@@ -971,7 +1185,15 @@ const FileTree = ({
         }
       );
     },
-    [fileTree, nodeExpandedState, flattenedTree]
+    [
+      fileTree,
+      nodeExpandedState,
+      flattenedTree,
+      setFileTree,
+      startPath,
+      setFilesContent,
+      socket,
+    ]
   );
 
   const handleAddFile = useCallback(
@@ -1062,7 +1284,18 @@ const FileTree = ({
         }
       );
     },
-    [fileTree, nodeExpandedState, startPath]
+    [
+      fileTree,
+      nodeExpandedState,
+      startPath,
+      setFilesContent,
+      socket,
+      checkIfNameIsUnique,
+      deleteNamesSet,
+      flattenedTree,
+      removeInputNode,
+      setFileTree,
+    ]
   );
 
   const handleAddFolder = useCallback(
@@ -1197,7 +1430,7 @@ const FileTree = ({
         }
       );
     },
-    [nodeExpandedState]
+    [nodeExpandedState, setFileTree, socket, startPath]
   );
 
   const getButtonHeight = useCallback((path: string, childCount: number) => {
@@ -1269,7 +1502,7 @@ const FileTree = ({
               <TreeFolder
                 node={node}
                 padLeft={(depth - depthToSubtractRef.current) * padLeft}
-                key={virtualRow.index}
+                key={node.path}
                 height={virtualRow.size}
                 start={virtualRow.start}
                 handleRename={handleRename}
@@ -1292,7 +1525,7 @@ const FileTree = ({
               <TreeFile
                 node={node}
                 padLeft={(node.depth - depthToSubtractRef.current) * padLeft}
-                key={virtualRow.index}
+                key={node.path}
                 height={virtualRow.size}
                 start={virtualRow.start}
                 handleRename={handleRename}
@@ -1309,16 +1542,26 @@ const FileTree = ({
             return (
               <TreeInput
                 node={node}
-                key={virtualRow.index}
+                key={node.path}
                 height={virtualRow.size}
                 start={virtualRow.start}
                 padLeft={node.depth * padLeft}
                 checkIfNameIsUnique={checkIfNameIsUnique}
+                isNodeModulesChildrenReceived={isNodeModulesChildrenReceived}
                 handleAddFile={handleAddFile}
                 handleAddFolder={handleAddFolder}
                 removeInputNode={removeInputNode}
                 deleteNamesSet={deleteNamesSet}
                 scrollRef={scrollRef}
+              />
+            );
+          } else if (node.type === "loading") {
+            return (
+              <LoadingNode
+                padLeft={node.depth * padLeft}
+                key={node.path}
+                height={virtualRow.size}
+                start={virtualRow.start}
               />
             );
           } else {

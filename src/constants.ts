@@ -35,6 +35,13 @@ export type FlattenedTreeFolderNode = Omit<TreeFolderNode, "children"> & {
   index: number;
 };
 
+export type LoadingNode = {
+  type: "loading";
+  pni: number;
+  depth: number;
+  path: string;
+};
+
 export type InputNode = {
   type: "input";
   operation: "add-file" | "add-folder";
@@ -46,9 +53,8 @@ export type InputNode = {
 };
 
 export type FlattenedTree = Array<
-  FlattenedTreeFolderNode | FlattenedTreeFileNode | InputNode
+  FlattenedTreeFolderNode | FlattenedTreeFileNode | InputNode | LoadingNode
 >;
-
 export type FileContent = {
   name: string;
   language: string;
@@ -79,6 +85,15 @@ export const editorSupportedLanguages: { [key: string]: string } = {
   cpp: "cpp",
 };
 
+// used when user clicks add file or add folder button on a node modules folder whose children tree structure is not yet loaded, so we show input node along with loading nodes, and when the children are loaded, we again insert the input node and use this data to show the input node
+export const tempInputInfo: {
+  [path: string]: {
+    operation: "add-file" | "add-folder";
+    value: string;
+    error: string;
+  };
+} = {};
+
 type IStandaloneCodeEditor = Parameters<OnMount>[0];
 type ITextModel = Exclude<ReturnType<IStandaloneCodeEditor["getModel"]>, null>;
 
@@ -108,6 +123,9 @@ export const clearEditorEntries = async (editorId: string) => {
     }
   });
 };
+
+// Contains count of all the children of a folder node. Used when a folder is opened to show skeleton loaders for all the children, until the children are fetched from the server
+export const folderChildCount: { [key: string]: number } = {};
 //
 // Shut your assistance, I don't need it.
 // Plan -

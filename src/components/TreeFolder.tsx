@@ -1,4 +1,4 @@
-import { FlattenedTreeFolderNode } from "../constants";
+import { FlattenedTree, FlattenedTreeFolderNode } from "../constants";
 import {
   AiOutlineFolderAdd,
   AiOutlineFileAdd,
@@ -37,14 +37,21 @@ type InputState = {
   show: boolean;
   error: string;
 };
-type GetChildren = (path: string, depth: number) => void;
+type GetChildren = (
+  path: string,
+  depth: number,
+  nodeIndex: number,
+  start: number,
+  inputOp?: "add-file" | "add-folder"
+) => void;
 type InsertInputNode = (
   index: number,
   operation: "add-file" | "add-folder",
-  depth: number
+  depth: number,
+  flatTree?: FlattenedTree | null
 ) => void;
 type DeleteNamesSet = (parentIndex: number) => void;
-type ExpandNode = (path: string) => void;
+type ExpandNode = (path: string) => FlattenedTree | undefined;
 type CloseNode = (path: string) => void;
 
 const itemSize = window.innerWidth > 768 ? 24 : 32;
@@ -117,6 +124,7 @@ const TreeFolder = ({
     e: React.MouseEvent<HTMLDivElement, MouseEvent>
   ) => {
     e.stopPropagation();
+    e.preventDefault();
 
     const actionSelected = (e.target as Element)
       .closest(".action-icon")
@@ -127,13 +135,25 @@ const TreeFolder = ({
         actionSelected !== "del-folder" &&
         actionSelected !== "rename"
       ) {
-        console.log("Node is not expanded, expanding the node");
-        expandNode(node.path);
-        // if (actionSelected === "add-file") {
-        //   insertInputNode(node.index, "add-file", node.depth);
-        // } else if (actionSelected === "add-folder") {
-        //   insertInputNode(node.index, "add-folder", node.depth);
-        // }
+        if (
+          node.path.includes("node_modules") &&
+          !isNodeModulesChildrenReceived.current[node.path]
+        ) {
+          if (actionSelected === "add-file") {
+            getChildren(node.path, node.depth, node.index, start, "add-file");
+          } else if (actionSelected === "add-folder") {
+            getChildren(node.path, node.depth, node.index, start, "add-folder");
+          }
+          return;
+        }
+
+        const flatTree = expandNode(node.path);
+        if (actionSelected === "add-file") {
+          insertInputNode(node.index, "add-file", node.depth, flatTree);
+        } else if (actionSelected === "add-folder") {
+          insertInputNode(node.index, "add-folder", node.depth, flatTree);
+        }
+        return;
       }
       switch (actionSelected) {
         case "rename":
@@ -166,7 +186,7 @@ const TreeFolder = ({
           !isNodeModulesChildrenReceived.current[node.path]
         ) {
           // This function will fetch children structure, then set isExpanded to true,set isNodeModulesChildrenReceived to true, expand the node
-          getChildren(node.path, node.depth);
+          getChildren(node.path, node.depth, node.index, start);
           return;
         }
         expandNode(node.path);
@@ -316,7 +336,7 @@ const TreeFolder = ({
                 node.path.includes("node_modules") &&
                 !isNodeModulesChildrenReceived.current[node.path]
               ) {
-                getChildren(node.path, node.depth);
+                getChildren(node.path, node.depth, node.index, start);
                 return;
               }
               expandNode(node.path);

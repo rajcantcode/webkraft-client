@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import Editor from "../components/Editor";
-import FileTree from "../components/FileTree";
 import NoFileSelected from "../components/NoFileSelected";
 import {
   ResizableHandle,
@@ -27,6 +26,7 @@ import { ProjectSearch } from "../components/ProjectSearch";
 import { Vcs } from "../components/Vcs";
 import { WorkspaceSettings } from "../components/WorkspaceSettings";
 import { ImperativePanelHandle } from "react-resizable-panels";
+import FileTreeWrapper from "../components/FileTree";
 
 function useSocketConnection(
   socketLink: string | null,
@@ -295,7 +295,7 @@ const Workspace = () => {
             onCollapse={() => setShowSidebar(false)}
             onExpand={() => setShowSidebar(true)}
           >
-            <FileTree
+            <FileTreeWrapper
               padLeft={8}
               fileFetchStatus={fileFetchStatus.current}
               socket={socket}

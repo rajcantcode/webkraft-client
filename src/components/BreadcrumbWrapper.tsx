@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Symbol } from "../types/symbol";
-import FileTree from "./FileTree";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -25,6 +24,7 @@ import {
 import { Socket } from "socket.io-client";
 import { getBreadcrumbIcon } from "../lib/utils";
 import { ScrollArea, ScrollBar } from "./ui/ScrollArea";
+import FileTreeWrapper from "./FileTree";
 
 type SymbolsToDisplay = {
   [depth: number]: Symbol[];
@@ -144,7 +144,7 @@ const BreadCrumbWrapper = React.memo(
                             className="max-h-[400px] min-w-[165px] max-w-[300px] border-[#4E5569] px-0 rounded-md bg-[#0E1525] overflow-auto"
                           >
                             <DropdownMenuItem className="flex p-0 overflow-hidden">
-                              <FileTree
+                              <FileTreeWrapper
                                 fileFetchStatus={fileFetchStatus}
                                 socket={socket}
                                 startPath={path}

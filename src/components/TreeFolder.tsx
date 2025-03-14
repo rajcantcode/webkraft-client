@@ -41,7 +41,6 @@ type GetChildren = (
   path: string,
   depth: number,
   nodeIndex: number,
-  start: number,
   inputOp?: "add-file" | "add-folder"
 ) => void;
 type InsertInputNode = (
@@ -121,88 +120,92 @@ const TreeFolder = React.memo(
       }
     }, [inputState.show]);
 
-    const handleFolderClick = (
-      e: React.MouseEvent<HTMLDivElement, MouseEvent>
-    ) => {
-      e.stopPropagation();
-      e.preventDefault();
+    const handleFolderClick = useCallback(
+      (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
+        e.stopPropagation();
+        e.preventDefault();
 
-      const actionSelected = (e.target as Element)
-        .closest(".action-icon")
-        ?.getAttribute("data-action");
-      if (actionSelected) {
-        if (
-          !isOpen &&
-          actionSelected !== "del-folder" &&
-          actionSelected !== "rename"
-        ) {
+        const actionSelected = (e.target as Element)
+          .closest(".action-icon")
+          ?.getAttribute("data-action");
+        if (actionSelected) {
           if (
-            node.path.includes("node_modules") &&
-            !isNodeModulesChildrenReceived.current[node.path]
+            !isOpen &&
+            actionSelected !== "del-folder" &&
+            actionSelected !== "rename"
           ) {
+            if (
+              node.path.includes("node_modules") &&
+              !isNodeModulesChildrenReceived.current[node.path]
+            ) {
+              if (actionSelected === "add-file") {
+                getChildren(node.path, node.depth, node.index, "add-file");
+              } else if (actionSelected === "add-folder") {
+                getChildren(node.path, node.depth, node.index, "add-folder");
+              }
+              return;
+            }
+
+            const flatTree = expandNode(node.path);
             if (actionSelected === "add-file") {
-              getChildren(node.path, node.depth, node.index, start, "add-file");
+              insertInputNode(node.index, "add-file", node.depth, flatTree);
             } else if (actionSelected === "add-folder") {
-              getChildren(
-                node.path,
-                node.depth,
-                node.index,
-                start,
-                "add-folder"
-              );
+              insertInputNode(node.index, "add-folder", node.depth, flatTree);
             }
             return;
           }
-
-          const flatTree = expandNode(node.path);
-          if (actionSelected === "add-file") {
-            insertInputNode(node.index, "add-file", node.depth, flatTree);
-          } else if (actionSelected === "add-folder") {
-            insertInputNode(node.index, "add-folder", node.depth, flatTree);
+          switch (actionSelected) {
+            case "rename":
+              setInputState({
+                value: node.name,
+                show: true,
+                error: "",
+              });
+              // handleRename();
+              return;
+            case "add-file":
+              insertInputNode(node.index, "add-file", node.depth);
+              // handleAddFile();
+              return;
+            case "add-folder":
+              insertInputNode(node.index, "add-folder", node.depth);
+              // handleAddFolder();
+              return;
+            case "del-folder":
+              deleteFolderModalRef.current?.showModal();
+              return;
+            default:
+              return;
           }
-          return;
-        }
-        switch (actionSelected) {
-          case "rename":
-            setInputState({
-              value: node.name,
-              show: true,
-              error: "",
-            });
-            // handleRename();
-            return;
-          case "add-file":
-            insertInputNode(node.index, "add-file", node.depth);
-            // handleAddFile();
-            return;
-          case "add-folder":
-            insertInputNode(node.index, "add-folder", node.depth);
-            // handleAddFolder();
-            return;
-          case "del-folder":
-            deleteFolderModalRef.current?.showModal();
-            return;
-          default:
-            return;
-        }
-      } else {
-        if (inputState.show) return;
-        if (!isOpen) {
-          if (
-            node.path.includes("node_modules") &&
-            !isNodeModulesChildrenReceived.current[node.path]
-          ) {
-            // This function will fetch children structure, then set isExpanded to true,set isNodeModulesChildrenReceived to true, expand the node
-            getChildren(node.path, node.depth, node.index, start);
-            return;
-          }
-          expandNode(node.path);
         } else {
-          closeNode(node.path);
-          return;
+          if (inputState.show) return;
+          if (!isOpen) {
+            if (
+              node.path.includes("node_modules") &&
+              !isNodeModulesChildrenReceived.current[node.path]
+            ) {
+              // This function will fetch children structure, then set isExpanded to true,set isNodeModulesChildrenReceived to true, expand the node
+              getChildren(node.path, node.depth, node.index);
+              return;
+            }
+            expandNode(node.path);
+          } else {
+            closeNode(node.path);
+            return;
+          }
         }
-      }
-    };
+      },
+      [
+        node,
+        inputState,
+        isNodeModulesChildrenReceived,
+        closeNode,
+        expandNode,
+        getChildren,
+        insertInputNode,
+        isOpen,
+      ]
+    );
 
     const handleInputChange = useCallback(
       (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -235,7 +238,7 @@ const TreeFolder = React.memo(
           error: "",
         }));
       },
-      [node, setInputState]
+      [node, setInputState, checkIfNameIsUnique]
     );
 
     const handleInputSubmit = useCallback(
@@ -347,7 +350,7 @@ const TreeFolder = React.memo(
                   node.path.includes("node_modules") &&
                   !isNodeModulesChildrenReceived.current[node.path]
                 ) {
-                  getChildren(node.path, node.depth, node.index, start);
+                  getChildren(node.path, node.depth, node.index);
                   return;
                 }
                 expandNode(node.path);
@@ -356,7 +359,7 @@ const TreeFolder = React.memo(
           }
         }
       },
-      [node, isOpen]
+      [node, isOpen, expandNode, isNodeModulesChildrenReceived, getChildren]
     );
 
     const handleDragLeave = useCallback(

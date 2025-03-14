@@ -242,7 +242,7 @@ const Results = ({
           const topPos = resultsTopPos.current[filePath];
           return (
             <div
-              className="absolute top-0 left-[4.5px] w-[3px] bg-[#5f6366] rounded-lg"
+              className="absolute top-0 left-[4.5px] w-[3px] bg-[#9DA2A6] bg-opacity-30 rounded-lg"
               style={{
                 transform: `translateY(${topPos + 22}px)`,
                 height: `${searchResults[filePath].length * 22}px`,

@@ -1,10 +1,4 @@
-import React, {
-  useEffect,
-  useState,
-  useCallback,
-  useRef,
-  useMemo,
-} from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import {
   editorSupportedLanguages,
   FileContentObj,
@@ -40,14 +34,13 @@ import {
 import { useVirtualizer } from "@tanstack/react-virtual";
 import TreeInput from "./TreeInput.js";
 import { cn } from "../lib/utils.js";
-import debounce from "lodash.debounce";
 import { LoadingNode as LoadingNodeType } from "../constants.js";
 
 type ExpandedChildrenLength = { path: string; length: number };
 type DepthAndStartInfo = {
   depth: number;
-  start: number;
   childCount: number;
+  index: number; // Index of the node in the flattened tree (used to calculate the start(y) position)
 };
 type ExpandedNode = { [path: string]: DepthAndStartInfo };
 type NodeExpandedState = {
@@ -98,8 +91,8 @@ const flattenTree = (
     if (node.type === "folder" && nodeExpandedState[node.path]) {
       expandedNodes[node.path] = {
         depth: node.depth,
-        start: 0,
         childCount: node.children.length,
+        index: currentIndex,
       };
       if (parentPath) {
         expandedChildrenLength.push({
@@ -991,7 +984,6 @@ const FileTree = React.memo(
         path: string,
         depth: number,
         nodeIndex: number,
-        start: number,
         inputOp?: "add-file" | "add-folder"
       ) => {
         if (!flattenedTree || !fileTree) {
@@ -1016,7 +1008,7 @@ const FileTree = React.memo(
           expandedNodesRef.current[nodePath] = {
             childCount: inputOp ? 4 : 3,
             depth: flattenedTree[nodeIndex].depth,
-            start: start,
+            index: nodeIndex,
           };
         }
 
@@ -1410,7 +1402,16 @@ const FileTree = React.memo(
           }
         );
       },
-      [fileTree, nodeExpandedState, flattenedTree, socket, startPath]
+      [
+        fileTree,
+        nodeExpandedState,
+        flattenedTree,
+        socket,
+        startPath,
+        checkIfNameIsUnique,
+        deleteNamesSet,
+        setFileTree,
+      ]
     );
 
     const handleMoveNodes = useCallback(
@@ -1488,12 +1489,6 @@ const FileTree = React.memo(
       // console.log(e.currentTarget);
     };
 
-    const printExpandedNodesRef = useMemo(() => {
-      return debounce((nodes: ExpandedNode) => {
-        console.log("printing expanded nodes ref");
-        console.log(nodes);
-      }, 500);
-    }, []);
     const getFolderPath = useCallback((filePath: string) => {
       const lastSlashIndex = filePath.lastIndexOf("/");
       return lastSlashIndex === -1
@@ -1505,13 +1500,6 @@ const FileTree = React.memo(
       return null;
     }
     return (
-      // <ScrollArea
-      //   className={cn(
-      //     "w-full h-full overflow-auto bg-[#171D2D] root-scroll",
-      //     className
-      //   )}
-      //   ref={scrollRef}
-      // >
       <div
         className={`w-full cursor-pointer tree-container bg-[#171D2D] relative`}
         onContextMenu={handleRightClick}
@@ -1521,6 +1509,7 @@ const FileTree = React.memo(
           if (i === 0) visibleNodesRef.current.clear();
           const node = flattenedTree[virtualRow.index];
 
+          // scrollRef.current?.
           const isInOverscan =
             virtualRow.start < scrollRef.current!.scrollTop ||
             virtualRow.end >
@@ -1530,12 +1519,7 @@ const FileTree = React.memo(
           }
 
           if (node.type === "folder") {
-            const { depth, isExpanded, path } = node;
-            const start = virtualRow.start;
-
-            if (isExpanded) {
-              expandedNodesRef.current[path].start = start;
-            }
+            const { depth } = node;
 
             return (
               <TreeFolder
@@ -1609,37 +1593,27 @@ const FileTree = React.memo(
         })}
 
         {Object.keys(expandedNodesRef.current).map((path, i) => {
-          const { start, depth, childCount } = expandedNodesRef.current[path];
-
-          if (i === 0) {
-            printExpandedNodesRef(expandedNodesRef.current);
-          }
-          // if (
-          //   start === 0 &&
-          //   currSelectedFilePath &&
-          //   path === getFolderPath(currSelectedFilePath) &&
-          //   flattenedTree[0].path !== path
-          // ) {
-          //   return null;
-          // }
+          const expandNodeInfo = expandedNodesRef.current[path];
+          const { depth, childCount } = expandNodeInfo;
+          const start = expandNodeInfo.index * itemSize + 6;
           const padding = (depth - depthToSubtractRef.current) * padLeft;
           const buttonHeight = getButtonHeight(path, childCount);
+
           return (
             <button
               className={`absolute top-0 left-0 w-2 group ${path}`}
               key={path}
               style={{
                 height: `${buttonHeight}px`,
-                transform: `translate(${padding + 5}px, ${start + itemSize}px)`,
+                transform: `translate(${padding + 7}px, ${start + itemSize}px)`,
               }}
               onClick={() => closeNode(path)}
             >
-              <div className="w-[1px] h-full group-hover:bg-[#0079f2] bg-[#9da2a6]"></div>
+              <div className="w-[1px] h-full group-hover:bg-[#0079f2] bg-[#9DA2A6] bg-opacity-30 group-hover:bg-opacity-100"></div>
             </button>
           );
         })}
       </div>
-      // </ScrollArea>
     );
   }
 );

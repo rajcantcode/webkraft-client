@@ -21,7 +21,6 @@ type HandleRename = (
   newName: string,
   type: "file" | "folder"
 ) => void;
-type HandleMoveNodes = (sourcePath: string, destinationPath: string) => void;
 type HandleDelete = (
   path: string,
   pni: number,
@@ -63,7 +62,6 @@ const TreeFolder = React.memo(
     start,
     handleRename,
     handleDelete,
-    handleMoveNodes,
     checkIfNameIsUnique,
     getChildren,
     insertInputNode,
@@ -81,7 +79,6 @@ const TreeFolder = React.memo(
     start: number;
     handleRename: HandleRename;
     handleDelete: HandleDelete;
-    handleMoveNodes: HandleMoveNodes;
     checkIfNameIsUnique: CheckIfNameIsUnique;
     getChildren: GetChildren;
     insertInputNode: InsertInputNode;
@@ -294,95 +291,8 @@ const TreeFolder = React.memo(
           }
         }
       },
-      [node, inputState, setInputState]
+      [node, inputState, setInputState, deleteNamesSet, handleRename]
     );
-
-    const handleDrop = useCallback(
-      (e: React.DragEvent<HTMLDivElement>) => {
-        e.preventDefault();
-        e.stopPropagation();
-
-        // debugger;
-        // Clear the timeout on drop event
-        if (timer.current.set && timer.current.id) {
-          clearTimeout(timer.current.id);
-          timer.current.id = null;
-          timer.current.set = false;
-          timer.current.dragCounter = 0;
-        }
-
-        console.log("Drop event received");
-        const path = e.dataTransfer.getData("text/plain");
-        const pathExcludingName = path.split("/").slice(0, -1).join("/");
-        if (pathExcludingName === node.path) {
-          console.log("Cannot move the file/folder to the same location");
-          return;
-        }
-
-        const name = path.split("/").pop();
-        if (!name) return;
-        const isNameValid = checkIfNameIsValid(name);
-        if (!isNameValid) {
-          // ToDo -> Display error message
-          console.error("The name is not valid");
-          return;
-        }
-        try {
-          handleMoveNodes(path, node.path);
-        } catch (error) {
-          console.error(error);
-        }
-      },
-      [node.path]
-    );
-
-    const handleDragEnter = useCallback(
-      (e: React.DragEvent<HTMLDivElement>) => {
-        e.preventDefault();
-        e.stopPropagation();
-        timer.current.dragCounter += 1;
-        if (timer.current.dragCounter === 1) {
-          if (!isOpen && !timer.current.set) {
-            timer.current.set = true;
-            timer.current.id = setTimeout(() => {
-              if (!isOpen) {
-                if (
-                  node.path.includes("node_modules") &&
-                  !isNodeModulesChildrenReceived.current[node.path]
-                ) {
-                  getChildren(node.path, node.depth, node.index);
-                  return;
-                }
-                expandNode(node.path);
-              }
-            }, 400);
-          }
-        }
-      },
-      [node, isOpen, expandNode, isNodeModulesChildrenReceived, getChildren]
-    );
-
-    const handleDragLeave = useCallback(
-      (e: React.DragEvent<HTMLDivElement>) => {
-        e.preventDefault();
-        e.stopPropagation();
-        timer.current.dragCounter -= 1;
-        if (timer.current.dragCounter === 0) {
-          if (timer.current.set && timer.current.id) {
-            clearTimeout(timer.current.id);
-            timer.current.set = false;
-            timer.current.id = null;
-          }
-        }
-      },
-      []
-    );
-
-    const handleDragOver = useCallback((e: React.DragEvent<HTMLDivElement>) => {
-      e.preventDefault();
-      e.stopPropagation();
-      e.dataTransfer.dropEffect = "move";
-    }, []);
 
     const handleDragStart = useCallback(
       (e: React.DragEvent<HTMLDivElement>) => {
@@ -410,11 +320,11 @@ const TreeFolder = React.memo(
     return (
       <>
         <div
-          className={`absolute top-0 left-0 folder-container p-[${padLeft}px] pr-1`}
-          onDrop={handleDrop}
-          onDragEnter={handleDragEnter}
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
+          className={`absolute top-0 left-0 folder-container p-[${padLeft}px] pr-1 tree-node`}
+          data-path={node.path}
+          data-depth={node.depth}
+          data-index={node.index}
+          data-type={node.type}
           style={{
             transform: `translateY(${start}px)`,
             height: `${height}px`,

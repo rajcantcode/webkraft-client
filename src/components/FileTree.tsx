@@ -175,6 +175,13 @@ const FileTree = React.memo(
     // Used when filetree is used in breadcrumbs
     const depthToSubtractRef = useRef<number>(0);
     const expandedNodesRef = useRef<ExpandedNode>({});
+    const dragTimerRef = useRef<{
+      [path: string]: {
+        dragCounter: number;
+        set: boolean;
+        id: NodeJS.Timeout | null;
+      };
+    }>({});
     const [flattenedTree, setFlattenedTree] = useState(() => {
       if (fileTree) {
         const { flattenedTree, expandedChildrenLength, expandedNodes } =
@@ -1496,6 +1503,135 @@ const FileTree = React.memo(
         : filePath.slice(0, lastSlashIndex);
     }, []);
 
+    const timeoutId = useRef<NodeJS.Timeout | null>(null);
+    const handleDragEnter = useCallback(
+      (e: React.DragEvent<HTMLDivElement>) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const folderElem = (e.target as HTMLElement).closest(
+          ".tree-node"
+        ) as HTMLElement;
+        if (!folderElem) return;
+        const { path, depth, index, type } = folderElem.dataset;
+
+        if (type === "file") return;
+        if (!path || !depth || !index || !type) return;
+
+        if (dragTimerRef.current[path]) {
+          dragTimerRef.current[path].dragCounter += 1;
+        } else {
+          dragTimerRef.current[path] = {
+            dragCounter: 1,
+            set: false,
+            id: null,
+          };
+        }
+
+        if (dragTimerRef.current[path].dragCounter === 1) {
+          if (!nodeExpandedState[path] && !dragTimerRef.current[path].set) {
+            dragTimerRef.current[path].set = true;
+            dragTimerRef.current[path].id = setTimeout(() => {
+              if (!nodeExpandedState[path]) {
+                if (
+                  path.includes("node_modules") &&
+                  !isNodeModulesChildrenReceived.current[path]
+                ) {
+                  getChildren(path, Number(depth), Number(index));
+                } else {
+                  expandNode(path);
+                }
+              }
+            }, 400);
+          }
+        }
+      },
+      [expandNode, getChildren, nodeExpandedState]
+    );
+    const handleDragLeave = useCallback(
+      (e: React.DragEvent<HTMLDivElement>) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const folderElem = (e.target as HTMLElement).closest(
+          ".tree-node"
+        ) as HTMLElement;
+        if (!folderElem) return;
+        const { path, type } = folderElem.dataset;
+
+        if (!path || !type || type === "file" || !dragTimerRef.current[path])
+          return;
+
+        dragTimerRef.current[path].dragCounter -= 1;
+        if (dragTimerRef.current[path].dragCounter === 0) {
+          if (dragTimerRef.current[path].set && dragTimerRef.current[path].id) {
+            clearTimeout(dragTimerRef.current[path].id);
+            dragTimerRef.current[path].set = false;
+            dragTimerRef.current[path].id = null;
+          }
+        }
+      },
+      []
+    );
+
+    const handleDragOver = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+      e.preventDefault();
+      e.stopPropagation();
+      e.dataTransfer.dropEffect = "move";
+    }, []);
+
+    const handleDrop = useCallback(
+      (e: React.DragEvent<HTMLDivElement>) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const { path, type } = (
+          (e.target as HTMLElement).closest(".tree-node") as HTMLElement
+        ).dataset;
+        if (!path || !type) return;
+        if (type === "folder") {
+          if (
+            dragTimerRef.current[path] &&
+            dragTimerRef.current[path].set &&
+            dragTimerRef.current[path].id
+          ) {
+            clearTimeout(dragTimerRef.current[path].id);
+            delete dragTimerRef.current[path];
+          }
+        }
+
+        const draggedPath = e.dataTransfer.getData("text/plain");
+        const splitDraggedPath = draggedPath.split("/");
+        const parentPathOfDraggedPath = splitDraggedPath.slice(0, -1).join("/");
+        if (parentPathOfDraggedPath === path) {
+          console.log("Cannot move the file/folder to the same location");
+          return;
+        }
+
+        const name = splitDraggedPath.pop();
+        if (!name) return;
+        const isNameValid = checkIfNameIsValid(name);
+        if (!isNameValid) {
+          console.error("The name is not valid");
+          return;
+        }
+        try {
+          if (type === "file") {
+            const destParentPath = path.split("/").slice(0, -1).join("/");
+            if (!destParentPath) {
+              handleMoveNodes(draggedPath, path);
+            } else {
+              handleMoveNodes(draggedPath, destParentPath);
+            }
+          } else {
+            handleMoveNodes(draggedPath, path);
+          }
+        } catch (error) {
+          console.error(error);
+        }
+      },
+      [handleMoveNodes]
+    );
+
     if (!fileTree || !flattenedTree) {
       return null;
     }
@@ -1504,6 +1640,10 @@ const FileTree = React.memo(
         className={`w-full cursor-pointer tree-container bg-[#171D2D] relative`}
         onContextMenu={handleRightClick}
         style={{ height: `${virtualizer.getTotalSize()}px` }}
+        onDragEnter={handleDragEnter}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
       >
         {virtualizer.getVirtualItems().map((virtualRow, i) => {
           if (i === 0) visibleNodesRef.current.clear();
@@ -1530,7 +1670,6 @@ const FileTree = React.memo(
                 start={virtualRow.start}
                 handleRename={handleRename}
                 handleDelete={handleDelete}
-                handleMoveNodes={handleMoveNodes}
                 checkIfNameIsUnique={checkIfNameIsUnique}
                 expandNode={expandNode}
                 deleteNamesSet={deleteNamesSet}
@@ -1553,7 +1692,6 @@ const FileTree = React.memo(
                 start={virtualRow.start}
                 handleRename={handleRename}
                 handleDelete={handleDelete}
-                handleMoveNodes={handleMoveNodes}
                 deleteNamesSet={deleteNamesSet}
                 checkIfNameIsUnique={checkIfNameIsUnique}
                 showEditOptions={startPath ? false : true}
@@ -1660,3 +1798,6 @@ const FileTreeWrapper = React.memo(
 const memoizedFileTree = React.memo(FileTree);
 memoizedFileTree.displayName = "FileTree";
 export default FileTreeWrapper;
+
+// dragenter, dragOver, drop -> parent
+// dragstart -> individual

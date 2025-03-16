@@ -28,8 +28,6 @@ type CheckIfNameIsUnique = (
   newName: string
 ) => boolean;
 type DeleteNamesSet = (parentIndex: number) => void;
-type HandleMoveNodes = (sourcePath: string, destinationPath: string) => void;
-
 const itemSize = window.innerWidth > 768 ? 24 : 32;
 
 const TreeFile = React.memo(
@@ -41,7 +39,6 @@ const TreeFile = React.memo(
     checkIfNameIsUnique,
     handleRename,
     handleDelete,
-    handleMoveNodes,
     deleteNamesSet,
     showEditOptions,
     scrollRef,
@@ -54,7 +51,6 @@ const TreeFile = React.memo(
     checkIfNameIsUnique: CheckIfNameIsUnique;
     handleRename: HandleRename;
     handleDelete: HandleDelete;
-    handleMoveNodes: HandleMoveNodes;
     deleteNamesSet: DeleteNamesSet;
     showEditOptions: boolean;
     scrollRef: React.RefObject<HTMLDivElement>;
@@ -147,7 +143,7 @@ const TreeFile = React.memo(
           e.currentTarget.querySelector(".edit-options") as HTMLElement
         )?.style.setProperty("display", "none");
       },
-      [node]
+      [node.path]
     );
 
     const handleDragEnd = useCallback((e: React.DragEvent<HTMLDivElement>) => {
@@ -225,60 +221,20 @@ const TreeFile = React.memo(
       }
     };
 
-    const handleDrop = useCallback(
-      (e: React.DragEvent<HTMLDivElement>) => {
-        e.preventDefault();
-        e.stopPropagation();
-
-        const path = e.dataTransfer.getData("text/plain");
-        const pathExcludingName = path.split("/").slice(0, -1).join("/");
-        if (pathExcludingName === node.path) {
-          console.log("Cannot move the file/folder to the same location");
-          return;
-        }
-
-        const name = path.split("/").pop();
-        if (!name) return;
-        const isNameValid = checkIfNameIsValid(name);
-        if (!isNameValid) {
-          // ToDo -> Display error message
-          console.error("The name is not valid");
-          return;
-        }
-
-        try {
-          const parentPath = node.path.split("/").slice(0, -1).join("/");
-          if (!parentPath) {
-            handleMoveNodes(path, node.path);
-          } else {
-            handleMoveNodes(path, parentPath);
-          }
-        } catch (error) {
-          console.error(error);
-        }
-      },
-      [node.path, handleMoveNodes]
-    );
-
-    const handleDragOver = useCallback((e: React.DragEvent<HTMLDivElement>) => {
-      e.preventDefault();
-      e.stopPropagation();
-      e.dataTransfer.dropEffect = "move";
-    }, []);
-
     const icon = getFileIcon(node.name);
 
     return (
       <div
-        className={`file-container absolute top-0 left-0`}
+        className={`file-container absolute top-0 left-0 tree-node`}
+        data-path={node.path}
+        // data-depth={node.depth}
+        data-type={node.type}
         style={{
           height: `${height}px`,
           transform: `translateY(${start}px)`,
           width: `calc(100% - ${padLeft}px)`,
           marginLeft: `${padLeft}px`,
         }}
-        onDrop={handleDrop}
-        onDragOver={handleDragOver}
       >
         <div
           className={`pl-[${padLeft}px] flex items-center w-[98%] file-details group justify-between text-sm transition-opacity duration-200 ${

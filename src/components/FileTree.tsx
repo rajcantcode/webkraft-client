@@ -182,6 +182,7 @@ const FileTree = React.memo(
         id: NodeJS.Timeout | null;
       };
     }>({});
+
     const [flattenedTree, setFlattenedTree] = useState(() => {
       if (fileTree) {
         const { flattenedTree, expandedChildrenLength, expandedNodes } =
@@ -1503,7 +1504,28 @@ const FileTree = React.memo(
         : filePath.slice(0, lastSlashIndex);
     }, []);
 
-    const timeoutId = useRef<NodeJS.Timeout | null>(null);
+    const startScroll = React.useCallback(
+      (direction: "up" | "down") => {
+        if (!scrollRef.current) return null;
+        console.log("🚨 setting scroll interval");
+        return setInterval(() => {
+          if (!scrollRef.current) return;
+
+          scrollRef.current.scrollBy({
+            top: direction === "up" ? -10 : 10,
+            behavior: "auto",
+          });
+        }, 16);
+      },
+      [scrollRef]
+    );
+    const stopScroll = React.useCallback(() => {
+      if (scrollTimeoutId.current) {
+        console.log(`🧹 clearing interval of id - ${scrollTimeoutId.current}`);
+        clearInterval(scrollTimeoutId.current);
+        scrollTimeoutId.current = null;
+      }
+    }, []);
     const handleDragEnter = useCallback(
       (e: React.DragEvent<HTMLDivElement>) => {
         e.preventDefault();
@@ -1552,6 +1574,12 @@ const FileTree = React.memo(
       (e: React.DragEvent<HTMLDivElement>) => {
         e.preventDefault();
         e.stopPropagation();
+
+        if ((e.target as HTMLDivElement).classList.contains("tree-container")) {
+          stopScroll();
+
+          console.log("🛑 Stop the scroll ");
+        }
         const folderElem = (e.target as HTMLElement).closest(
           ".tree-node"
         ) as HTMLElement;
@@ -1570,14 +1598,60 @@ const FileTree = React.memo(
           }
         }
       },
-      []
+      [stopScroll]
     );
 
-    const handleDragOver = useCallback((e: React.DragEvent<HTMLDivElement>) => {
-      e.preventDefault();
-      e.stopPropagation();
-      e.dataTransfer.dropEffect = "move";
-    }, []);
+    const scrollTimeoutId = useRef<NodeJS.Timeout | null>(null);
+
+    const treeRef = useRef<HTMLDivElement | null>(null);
+    const handleDragOver = useCallback(
+      (e: React.DragEvent<HTMLDivElement>) => {
+        e.preventDefault();
+        e.stopPropagation();
+        e.dataTransfer.dropEffect = "move";
+        if (!treeRef.current || !scrollRef.current) return;
+
+        // Current Mouse position relative to the target
+        const y = e.clientY - e.currentTarget.getBoundingClientRect().top;
+
+        // Check if being dragged over top bound
+        if (y < scrollRef.current.scrollTop + 50) {
+          if (scrollTimeoutId.current) return;
+          scrollTimeoutId.current = startScroll("up");
+          return;
+        }
+
+        // Check if being dragged over bottom bound or in center
+        if (scrollRef.current.clientHeight > treeRef.current.clientHeight) {
+          if (
+            y >
+            scrollRef.current.scrollTop + treeRef.current.clientHeight - 50
+          ) {
+            if (scrollTimeoutId.current) return;
+            scrollTimeoutId.current = startScroll("down");
+          } else {
+            if (scrollTimeoutId.current) {
+              stopScroll();
+            }
+          }
+          return;
+        } else {
+          if (
+            y >
+            scrollRef.current.scrollTop + scrollRef.current.clientHeight - 50
+          ) {
+            if (scrollTimeoutId.current) return;
+            scrollTimeoutId.current = startScroll("down");
+          } else {
+            if (scrollTimeoutId.current) {
+              stopScroll();
+            }
+          }
+          return;
+        }
+      },
+      [startScroll, stopScroll, scrollRef]
+    );
 
     const handleDrop = useCallback(
       (e: React.DragEvent<HTMLDivElement>) => {
@@ -1644,6 +1718,7 @@ const FileTree = React.memo(
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
+        ref={treeRef}
       >
         {virtualizer.getVirtualItems().map((virtualRow, i) => {
           if (i === 0) visibleNodesRef.current.clear();
@@ -1680,6 +1755,7 @@ const FileTree = React.memo(
                 showEditOptions={startPath ? false : true}
                 scrollRef={scrollRef}
                 workspaceRef={workspaceRef}
+                stopScroll={stopScroll}
               />
             );
           } else if (node.type === "file") {
@@ -1697,6 +1773,7 @@ const FileTree = React.memo(
                 showEditOptions={startPath ? false : true}
                 scrollRef={scrollRef}
                 workspaceRef={workspaceRef}
+                stopScroll={stopScroll}
               />
             );
           } else if (node.type === "input") {
@@ -1774,10 +1851,11 @@ const FileTreeWrapper = React.memo(
     workspaceRef: React.RefObject<HTMLDivElement> | null;
   }) => {
     const scrollRef = useRef<HTMLDivElement>(null);
+
     return (
       <ScrollArea
         className={cn(
-          "w-full h-full overflow-auto bg-[#171D2D] root-scroll",
+          "w-full h-full overflow-auto bg-[#171D2D] root-scroll relative",
           className
         )}
         ref={scrollRef}

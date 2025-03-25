@@ -43,6 +43,7 @@ const TreeFile = React.memo(
     showEditOptions,
     scrollRef,
     workspaceRef,
+    stopScroll,
   }: {
     node: FlattenedTreeFileNode;
     padLeft: number;
@@ -55,6 +56,7 @@ const TreeFile = React.memo(
     showEditOptions: boolean;
     scrollRef: React.RefObject<HTMLDivElement>;
     workspaceRef: React.RefObject<HTMLDivElement> | null;
+    stopScroll: () => void;
   }) => {
     const [inputState, setInputState] = useState({
       show: false,
@@ -146,14 +148,18 @@ const TreeFile = React.memo(
       [node.path]
     );
 
-    const handleDragEnd = useCallback((e: React.DragEvent<HTMLDivElement>) => {
-      e.currentTarget.style.removeProperty("box-shadow");
-      console.log("drag end");
-      e.currentTarget.style.opacity = "1";
-      (
-        e.currentTarget.querySelector(".edit-options") as HTMLElement
-      )?.style.removeProperty("display");
-    }, []);
+    const handleDragEnd = useCallback(
+      (e: React.DragEvent<HTMLDivElement>) => {
+        e.currentTarget.style.removeProperty("box-shadow");
+        e.currentTarget.style.opacity = "1";
+        stopScroll();
+
+        (
+          e.currentTarget.querySelector(".edit-options") as HTMLElement
+        )?.style.removeProperty("display");
+      },
+      [stopScroll]
+    );
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       e.stopPropagation();
@@ -296,8 +302,9 @@ const TreeFile = React.memo(
                 className={`flex items-center sm:w-full gap-2 name ${
                   showEditOptions ? "sm:group-hover:w-[calc(100%-80px)]" : ""
                 } w-[calc(100%-40px)]`}
+                draggable={false}
               >
-                <img src={icon} alt="" className="w-4 h-4" />
+                <img src={icon} alt="" className="w-4 h-4" draggable={false} />
                 <p className="overflow-hidden text-ellipsis whitespace-nowrap">
                   {node.name}
                 </p>

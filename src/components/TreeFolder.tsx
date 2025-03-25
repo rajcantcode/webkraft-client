@@ -72,6 +72,7 @@ const TreeFolder = React.memo(
     showEditOptions,
     scrollRef,
     workspaceRef,
+    stopScroll,
   }: {
     node: FlattenedTreeFolderNode;
     padLeft: number;
@@ -91,6 +92,7 @@ const TreeFolder = React.memo(
     showEditOptions: boolean;
     scrollRef: React.RefObject<HTMLDivElement>;
     workspaceRef: React.RefObject<HTMLDivElement> | null;
+    stopScroll: () => void;
   }) => {
     const { isExpanded: isOpen } = node;
     const [inputState, setInputState] = useState<InputState>({
@@ -100,15 +102,7 @@ const TreeFolder = React.memo(
     });
     const workspaceName = useWorkspaceStore((state) => state.name);
     const inputRef = useRef<HTMLInputElement>(null);
-    const timer = useRef<{
-      dragCounter: number;
-      set: boolean;
-      id: NodeJS.Timeout | null;
-    }>({
-      dragCounter: 0,
-      set: false,
-      id: null,
-    });
+
     const deleteFolderModalRef = useRef<HTMLDialogElement>(null);
 
     useEffect(() => {
@@ -307,14 +301,17 @@ const TreeFolder = React.memo(
       [node]
     );
 
-    const handleDragEnd = useCallback((e: React.DragEvent<HTMLDivElement>) => {
-      e.currentTarget.style.removeProperty("box-shadow");
-      console.log("drag end");
-      e.currentTarget.style.opacity = "1";
-      (
-        e.currentTarget.querySelector(".edit-options") as HTMLElement
-      )?.style.removeProperty("display");
-    }, []);
+    const handleDragEnd = useCallback(
+      (e: React.DragEvent<HTMLDivElement>) => {
+        e.currentTarget.style.removeProperty("box-shadow");
+        e.currentTarget.style.opacity = "1";
+        stopScroll();
+        (
+          e.currentTarget.querySelector(".edit-options") as HTMLElement
+        )?.style.removeProperty("display");
+      },
+      [stopScroll]
+    );
 
     const { icon, openIcon } = getFolderIcon(node.name);
     return (
@@ -394,6 +391,7 @@ const TreeFolder = React.memo(
                     src={isOpen ? openIcon : icon}
                     alt=""
                     className="w-4 h-4"
+                    draggable={false}
                   />
                   <p className="overflow-hidden text-ellipsis whitespace-nowrap">
                     {node.name}

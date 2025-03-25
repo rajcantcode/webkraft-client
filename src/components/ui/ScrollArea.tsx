@@ -6,23 +6,25 @@ import { cn } from "../../lib/utils";
 const ScrollArea = React.forwardRef<
   React.ElementRef<typeof ScrollAreaPrimitive.Root>,
   React.ComponentPropsWithoutRef<typeof ScrollAreaPrimitive.Root>
->(({ className, children, ...props }, ref) => (
-  <ScrollAreaPrimitive.Root
-    className={cn("relative overflow-auto", className)}
-    {...props}
-    // ref={ref}
-  >
-    <ScrollAreaPrimitive.Viewport
-      // Adding ref to the viewport makes virtualization on fileTree work. Idk why
-      ref={ref}
-      className="h-full w-full rounded-[inherit] relative overflow-auto contain-paint"
+>(({ className, children, ...props }, ref) => {
+  return (
+    <ScrollAreaPrimitive.Root
+      className={cn("relative overflow-auto", className)}
+      {...props}
+      // ref={ref}
     >
-      {children}
-    </ScrollAreaPrimitive.Viewport>
-    <ScrollBar />
-    <ScrollAreaPrimitive.Corner />
-  </ScrollAreaPrimitive.Root>
-));
+      <ScrollAreaPrimitive.Viewport
+        // Adding ref to the viewport makes virtualization on fileTree work. Idk why
+        ref={ref}
+        className="h-full w-full rounded-[inherit] relative overflow-auto contain-paint"
+      >
+        {children}
+      </ScrollAreaPrimitive.Viewport>
+      <ScrollBar />
+      <ScrollAreaPrimitive.Corner />
+    </ScrollAreaPrimitive.Root>
+  );
+});
 ScrollArea.displayName = ScrollAreaPrimitive.Root.displayName;
 
 const ScrollBar = React.forwardRef<

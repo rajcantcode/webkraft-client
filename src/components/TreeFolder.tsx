@@ -7,7 +7,13 @@ import {
 } from "react-icons/ai";
 import { IoMdSend } from "react-icons/io";
 import { checkIfNameIsValid, getFolderIcon } from "../lib/utils";
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { Input } from "./ui/Input";
 import DeleteFolderModal from "./DeleteConfirmationModal";
 import { createPortal } from "react-dom";
@@ -73,6 +79,7 @@ const TreeFolder = React.memo(
     scrollRef,
     workspaceRef,
     stopScroll,
+    curDraggedOverParentPath,
   }: {
     node: FlattenedTreeFolderNode;
     padLeft: number;
@@ -93,6 +100,7 @@ const TreeFolder = React.memo(
     scrollRef: React.RefObject<HTMLDivElement>;
     workspaceRef: React.RefObject<HTMLDivElement> | null;
     stopScroll: () => void;
+    curDraggedOverParentPath: React.MutableRefObject<string | null>;
   }) => {
     const { isExpanded: isOpen } = node;
     const [inputState, setInputState] = useState<InputState>({
@@ -104,6 +112,11 @@ const TreeFolder = React.memo(
     const inputRef = useRef<HTMLInputElement>(null);
 
     const deleteFolderModalRef = useRef<HTMLDialogElement>(null);
+
+    const parentPath = useMemo(
+      () => node.path.split("/").slice(0, -1).join("/"),
+      [node.path]
+    );
 
     useEffect(() => {
       if (inputState.show && inputRef.current) {
@@ -297,8 +310,9 @@ const TreeFolder = React.memo(
         (
           e.currentTarget.querySelector(".edit-options") as HTMLElement
         )?.style.setProperty("display", "none");
+        curDraggedOverParentPath.current = parentPath;
       },
-      [node]
+      [node, parentPath, curDraggedOverParentPath]
     );
 
     const handleDragEnd = useCallback(
@@ -309,8 +323,9 @@ const TreeFolder = React.memo(
         (
           e.currentTarget.querySelector(".edit-options") as HTMLElement
         )?.style.removeProperty("display");
+        curDraggedOverParentPath.current = null;
       },
-      [stopScroll]
+      [stopScroll, curDraggedOverParentPath]
     );
 
     const { icon, openIcon } = getFolderIcon(node.name);

@@ -1,7 +1,13 @@
 import { AiOutlineDelete, AiOutlineEdit } from "react-icons/ai";
 import { checkIfNameIsValid, getFileIcon } from "../lib/utils";
 import { FlattenedTreeFileNode } from "../constants";
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { Input } from "./ui/Input";
 import DeleteFileModal from "./DeleteConfirmationModal";
 import { IoMdSend } from "react-icons/io";
@@ -44,6 +50,7 @@ const TreeFile = React.memo(
     scrollRef,
     workspaceRef,
     stopScroll,
+    curDraggedOverParentPath,
   }: {
     node: FlattenedTreeFileNode;
     padLeft: number;
@@ -57,6 +64,7 @@ const TreeFile = React.memo(
     scrollRef: React.RefObject<HTMLDivElement>;
     workspaceRef: React.RefObject<HTMLDivElement> | null;
     stopScroll: () => void;
+    curDraggedOverParentPath: React.MutableRefObject<string | null>;
   }) => {
     const [inputState, setInputState] = useState({
       show: false,
@@ -76,6 +84,10 @@ const TreeFile = React.memo(
     const setEditorIds = useWorkspaceStore((state) => state.setEditorIds);
     const inputRef = useRef<HTMLInputElement>(null);
     const deleteFileModalRef = useRef<HTMLDialogElement>(null);
+    const parentPath = useMemo(
+      () => node.path.split("/").slice(0, -1).join("/"),
+      [node.path]
+    );
 
     useEffect(() => {
       if (inputState.show && inputRef.current) {
@@ -144,8 +156,9 @@ const TreeFile = React.memo(
         (
           e.currentTarget.querySelector(".edit-options") as HTMLElement
         )?.style.setProperty("display", "none");
+        curDraggedOverParentPath.current = parentPath;
       },
-      [node.path]
+      [node.path, parentPath, curDraggedOverParentPath]
     );
 
     const handleDragEnd = useCallback(
@@ -157,8 +170,9 @@ const TreeFile = React.memo(
         (
           e.currentTarget.querySelector(".edit-options") as HTMLElement
         )?.style.removeProperty("display");
+        curDraggedOverParentPath.current = null;
       },
-      [stopScroll]
+      [stopScroll, curDraggedOverParentPath]
     );
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -233,7 +247,8 @@ const TreeFile = React.memo(
       <div
         className={`file-container absolute top-0 left-0 tree-node`}
         data-path={node.path}
-        // data-depth={node.depth}
+        data-depth={node.depth}
+        data-pni={node.pni}
         data-type={node.type}
         style={{
           height: `${height}px`,

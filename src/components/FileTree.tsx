@@ -1,4 +1,10 @@
-import React, { useEffect, useState, useCallback, useRef } from "react";
+import React, {
+  useEffect,
+  useState,
+  useCallback,
+  useRef,
+  useMemo,
+} from "react";
 import {
   editorSupportedLanguages,
   FileContentObj,
@@ -35,6 +41,7 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 import TreeInput from "./TreeInput.js";
 import { cn } from "../lib/utils.js";
 import { LoadingNode as LoadingNodeType } from "../constants.js";
+import debounce from "lodash.debounce";
 
 type ExpandedChildrenLength = { path: string; length: number };
 type DepthAndStartInfo = {
@@ -207,6 +214,7 @@ const FileTree = React.memo(
       [path: string]: Set<string>;
     }>({});
     const visibleNodesRef = useRef<Set<string>>(new Set<string>());
+    const dragContainerRef = useRef<HTMLDivElement>(null);
     const [pathToScroll, setPathToScroll] = useState<string | null>(null);
 
     useEffect(() => {
@@ -1519,7 +1527,7 @@ const FileTree = React.memo(
       },
       [scrollRef]
     );
-    const stopScroll = React.useCallback(() => {
+    const stopScroll = useCallback(() => {
       if (scrollTimeoutId.current) {
         console.log(`🧹 clearing interval of id - ${scrollTimeoutId.current}`);
         clearInterval(scrollTimeoutId.current);
@@ -1577,8 +1585,9 @@ const FileTree = React.memo(
 
         if ((e.target as HTMLDivElement).classList.contains("tree-container")) {
           stopScroll();
-
-          console.log("🛑 Stop the scroll ");
+          if (dragContainerRef.current) {
+            dragContainerRef.current.style.display = "none";
+          }
         }
         const folderElem = (e.target as HTMLElement).closest(
           ".tree-node"
@@ -1604,6 +1613,18 @@ const FileTree = React.memo(
     const scrollTimeoutId = useRef<NodeJS.Timeout | null>(null);
 
     const treeRef = useRef<HTMLDivElement | null>(null);
+    const curDraggedOverParentPath = useRef<string | null>(null);
+    const stopScrollDebounce = useMemo(
+      () =>
+        debounce(() => {
+          if (dragContainerRef.current) {
+            dragContainerRef.current.style.display = "none";
+          }
+          console.log("scroll stopped from debounce");
+          stopScroll();
+        }, 500),
+      [stopScroll]
+    );
     const handleDragOver = useCallback(
       (e: React.DragEvent<HTMLDivElement>) => {
         e.preventDefault();
@@ -1611,6 +1632,48 @@ const FileTree = React.memo(
         e.dataTransfer.dropEffect = "move";
         if (!treeRef.current || !scrollRef.current) return;
 
+        const el = (e.target as HTMLDivElement).classList.contains("tree-node")
+          ? (e.target as HTMLDivElement)
+          : ((e.target as HTMLElement).closest(".tree-node") as HTMLDivElement);
+
+        if (el) {
+          if (!dragContainerRef.current || !curDraggedOverParentPath.current)
+            return;
+          const { path, depth, index, type, pni } = el.dataset;
+          if (type === "folder" && (!path || !depth || !index)) return;
+          if (type === "file" && (!path || !depth || !pni)) return;
+
+          stopScrollDebounce();
+          const containerPath =
+            type === "file" ? path!.split("/").slice(0, -1).join("/") : path!;
+          const containerDepth =
+            type === "file" ? Number(depth) - 1 : Number(depth);
+          const offSetIndex = type === "file" ? Number(pni) : Number(index);
+
+          const transformY = offSetIndex * itemSize + 6;
+          const childCount =
+            expandedNodesRef.current[containerPath]?.childCount;
+          const containerHeight =
+            getButtonHeight(containerPath, childCount ? childCount : 0) +
+            itemSize;
+          const containerPadLeft =
+            (containerDepth - depthToSubtractRef.current) * padLeft;
+
+          dragContainerRef.current.style.transform = `translateY(${transformY}px)`;
+          dragContainerRef.current.style.height = `${containerHeight}px`;
+          dragContainerRef.current.style.width = `calc(100% - ${
+            containerPadLeft + 5
+          }px)`;
+
+          dragContainerRef.current.style.marginLeft =
+            containerPadLeft === 0 ? `2px` : `${containerPadLeft}px`;
+          dragContainerRef.current.style.outlineColor =
+            curDraggedOverParentPath.current === containerPath
+              ? "#E52222"
+              : "#0079f2";
+
+          dragContainerRef.current.style.display = "block";
+        }
         // Current Mouse position relative to the target
         const y = e.clientY - e.currentTarget.getBoundingClientRect().top;
 
@@ -1650,7 +1713,7 @@ const FileTree = React.memo(
           return;
         }
       },
-      [startScroll, stopScroll, scrollRef]
+      [startScroll, stopScroll, scrollRef, getButtonHeight, padLeft, stopScrollDebounce]
     );
 
     const handleDrop = useCallback(
@@ -1658,6 +1721,10 @@ const FileTree = React.memo(
         e.preventDefault();
         e.stopPropagation();
 
+        stopScroll();
+        if (dragContainerRef.current) {
+          dragContainerRef.current.style.display = "none";
+        }
         const { path, type } = (
           (e.target as HTMLElement).closest(".tree-node") as HTMLElement
         ).dataset;
@@ -1703,7 +1770,7 @@ const FileTree = React.memo(
           console.error(error);
         }
       },
-      [handleMoveNodes]
+      [handleMoveNodes, stopScroll]
     );
 
     if (!fileTree || !flattenedTree) {
@@ -1756,6 +1823,7 @@ const FileTree = React.memo(
                 scrollRef={scrollRef}
                 workspaceRef={workspaceRef}
                 stopScroll={stopScroll}
+                curDraggedOverParentPath={curDraggedOverParentPath}
               />
             );
           } else if (node.type === "file") {
@@ -1774,6 +1842,7 @@ const FileTree = React.memo(
                 scrollRef={scrollRef}
                 workspaceRef={workspaceRef}
                 stopScroll={stopScroll}
+                curDraggedOverParentPath={curDraggedOverParentPath}
               />
             );
           } else if (node.type === "input") {
@@ -1828,6 +1897,11 @@ const FileTree = React.memo(
             </button>
           );
         })}
+
+        <div
+          className="absolute hidden rounded-md pointer-events-none drag-container outline-dashed outline-[#0079f2] transition-all duration-200"
+          ref={dragContainerRef}
+        ></div>
       </div>
     );
   }
@@ -1876,6 +1950,3 @@ const FileTreeWrapper = React.memo(
 const memoizedFileTree = React.memo(FileTree);
 memoizedFileTree.displayName = "FileTree";
 export default FileTreeWrapper;
-
-// dragenter, dragOver, drop -> parent
-// dragstart -> individual

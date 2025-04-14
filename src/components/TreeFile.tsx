@@ -148,6 +148,7 @@ const TreeFile = React.memo(
         setActiveEditorId,
         setEditorIds,
         setSelectedFilePath,
+        showModal,
       ]
     );
 

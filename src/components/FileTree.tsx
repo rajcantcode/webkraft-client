@@ -54,6 +54,7 @@ type DepthAndStartInfo = {
   depth: number;
   childCount: number;
   index: number; // Index of the node in the flattened tree (used to calculate the start(y) position)
+  start: number;
 };
 type ExpandedNode = { [path: string]: DepthAndStartInfo };
 type NodeExpandedState = {
@@ -106,6 +107,7 @@ const flattenTree = (
         depth: node.depth,
         childCount: node.children.length,
         index: currentIndex,
+        start: 0,
       };
       if (parentPath) {
         expandedChildrenLength.push({
@@ -1449,7 +1451,7 @@ const FileTree = React.memo(
           console.log("Socket not connected");
           return;
         }
-        
+
         const newFileStructure = moveNodes(sourcePath, destPath, overwrite);
         if (!newFileStructure) return;
         setFileTree(newFileStructure);
@@ -1463,7 +1465,7 @@ const FileTree = React.memo(
         expandedChildrenLengthRef.current = expandedChildrenLength;
         expandedNodesRef.current = expandedNodes;
         setFlattenedTree(newFlattenedTree);
-        
+
         const sourceFileName = sourcePath.split("/").pop();
         const sourceParentPath = sourcePath.split("/").slice(0, -1).join("/");
         socket.emit(
@@ -1868,7 +1870,9 @@ const FileTree = React.memo(
 
           if (node.type === "folder") {
             const { depth } = node;
-
+            if (expandedNodesRef.current[node.path]) {
+              expandedNodesRef.current[node.path].start = virtualRow.start;
+            }
             return (
               <TreeFolder
                 node={node}
@@ -1944,8 +1948,8 @@ const FileTree = React.memo(
 
         {Object.keys(expandedNodesRef.current).map((path, i) => {
           const expandNodeInfo = expandedNodesRef.current[path];
-          const { depth, childCount } = expandNodeInfo;
-          const start = expandNodeInfo.index * itemSize + 6;
+          const { depth, childCount, start } = expandNodeInfo;
+
           const padding = (depth - depthToSubtractRef.current) * padLeft;
           const buttonHeight = getButtonHeight(path, childCount);
 

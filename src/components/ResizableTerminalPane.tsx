@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Terminal as TerminalType } from "../types/terminal";
 import { ResizableHandle, ResizablePanel } from "./ui/Resizable";
 import { Socket } from "socket.io-client";
@@ -30,14 +30,18 @@ const ResizableTerminalPane = ({
 }) => {
   const [terminalSize, setTerminalSize] = useState(terminalContainerSize);
 
-  const request = debounce((terminalSize: number) => {
-    setTerminalSize(terminalSize);
-  }, 200);
+  const request = useMemo(
+    () =>
+      debounce((terminalSize: number) => {
+        setTerminalSize(terminalSize);
+      }, 200),
+    []
+  );
   const handleTerminalResize = useCallback(
     (terminalSize: number) => {
       request(terminalSize);
     },
-    [request],
+    [request]
   );
 
   useEffect(() => {
@@ -52,10 +56,10 @@ const ResizableTerminalPane = ({
         minSize={10}
         // maxSize={80}
         collapsible={false}
-        className="bg-green-300 h-full"
+        className="h-full bg-green-300"
         onResize={handleTerminalResize}
         onClick={(
-          e: React.MouseEvent<keyof HTMLElementTagNameMap, MouseEvent>,
+          e: React.MouseEvent<keyof HTMLElementTagNameMap, MouseEvent>
         ) => {
           e.stopPropagation();
           e.preventDefault();

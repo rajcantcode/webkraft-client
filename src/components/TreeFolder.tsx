@@ -15,21 +15,16 @@ import React, {
   useState,
 } from "react";
 import { Input } from "./ui/Input";
-import DeleteFolderModal from "./DeleteConfirmationModal";
 import { createPortal } from "react-dom";
 import { TooltipWrapper } from "./ui/ToolTip";
 import { useWorkspaceStore } from "../store";
+import { DeleteInfo, OverwriteInfo } from "../types/modal";
 
 type HandleRename = (
   pni: number,
   depth: number,
   path: string,
   newName: string,
-  type: "file" | "folder"
-) => void;
-type HandleDelete = (
-  path: string,
-  pni: number,
   type: "file" | "folder"
 ) => void;
 type CheckIfNameIsUnique = (
@@ -67,7 +62,6 @@ const TreeFolder = React.memo(
     height,
     start,
     handleRename,
-    handleDelete,
     checkIfNameIsUnique,
     getChildren,
     insertInputNode,
@@ -79,14 +73,14 @@ const TreeFolder = React.memo(
     scrollRef,
     workspaceRef,
     stopScroll,
-    curDraggedOverParentPath,
+    curDraggedOverPath,
+    showModal,
   }: {
     node: FlattenedTreeFolderNode;
     padLeft: number;
     height: number;
     start: number;
     handleRename: HandleRename;
-    handleDelete: HandleDelete;
     checkIfNameIsUnique: CheckIfNameIsUnique;
     getChildren: GetChildren;
     insertInputNode: InsertInputNode;
@@ -100,7 +94,11 @@ const TreeFolder = React.memo(
     scrollRef: React.RefObject<HTMLDivElement>;
     workspaceRef: React.RefObject<HTMLDivElement> | null;
     stopScroll: () => void;
-    curDraggedOverParentPath: React.MutableRefObject<string | null>;
+    curDraggedOverPath: React.MutableRefObject<{
+      path: string | null;
+      basePath: string | null;
+    }>;
+    showModal: (info: DeleteInfo | OverwriteInfo) => void;
   }) => {
     const { isExpanded: isOpen } = node;
     const [inputState, setInputState] = useState<InputState>({
@@ -110,8 +108,6 @@ const TreeFolder = React.memo(
     });
     const workspaceName = useWorkspaceStore((state) => state.name);
     const inputRef = useRef<HTMLInputElement>(null);
-
-    const deleteFolderModalRef = useRef<HTMLDialogElement>(null);
 
     const parentPath = useMemo(
       () => node.path.split("/").slice(0, -1).join("/"),
@@ -176,7 +172,13 @@ const TreeFolder = React.memo(
               // handleAddFolder();
               return;
             case "del-folder":
-              deleteFolderModalRef.current?.showModal();
+              showModal({
+                opType: "delete",
+                nodeType: node.type,
+                name: node.name,
+                path: node.path,
+                pni: node.pni,
+              });
               return;
             default:
               return;
@@ -310,9 +312,10 @@ const TreeFolder = React.memo(
         (
           e.currentTarget.querySelector(".edit-options") as HTMLElement
         )?.style.setProperty("display", "none");
-        curDraggedOverParentPath.current = parentPath;
+        curDraggedOverPath.current.path = node.path;
+        curDraggedOverPath.current.basePath = parentPath;
       },
-      [node, parentPath, curDraggedOverParentPath]
+      [node, parentPath, curDraggedOverPath]
     );
 
     const handleDragEnd = useCallback(
@@ -323,9 +326,10 @@ const TreeFolder = React.memo(
         (
           e.currentTarget.querySelector(".edit-options") as HTMLElement
         )?.style.removeProperty("display");
-        curDraggedOverParentPath.current = null;
+        curDraggedOverPath.current.path = null;
+        curDraggedOverPath.current.basePath = null;
       },
-      [stopScroll, curDraggedOverParentPath]
+      [stopScroll, curDraggedOverPath]
     );
 
     const { icon, openIcon } = getFolderIcon(node.name);
@@ -463,19 +467,6 @@ const TreeFolder = React.memo(
               </>
             )}
           </div>
-          <dialog
-            ref={deleteFolderModalRef}
-            className="border shadow-[0px_8px_16px_0px_rgba(2, 2, 3, 0.32)] border-[#3C445C] rounded-md"
-          >
-            <DeleteFolderModal
-              type={node.type}
-              name={node.name}
-              pni={node.pni}
-              modalRef={deleteFolderModalRef}
-              path={node.path}
-              handleDelete={handleDelete}
-            />
-          </dialog>
         </div>
       </>
     );

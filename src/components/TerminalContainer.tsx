@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ResizableHandle,
   ResizablePanel,
@@ -32,9 +32,13 @@ const TerminalContainer = ({
     defaultTerminalContainerSize
   );
 
-  const request = debounce((size: number) => {
-    setTerminalContainerSize(size);
-  }, 200);
+  const request = useMemo(
+    () =>
+      debounce((size: number) => {
+        setTerminalContainerSize(size);
+      }, 200),
+    []
+  );
 
   const handleTerminalResize = useCallback(
     (size: number) => {

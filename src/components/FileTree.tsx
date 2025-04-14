@@ -15,6 +15,8 @@ import {
   InputNode,
   FileContent,
   tempInputInfo,
+  tempNodeStore,
+  tempOverwriteNodeStore,
 } from "../constants.js";
 import TreeFolder from "./TreeFolder.js";
 import TreeFile from "./TreeFile.js";
@@ -42,6 +44,10 @@ import TreeInput from "./TreeInput.js";
 import { cn } from "../lib/utils.js";
 import { LoadingNode as LoadingNodeType } from "../constants.js";
 import debounce from "lodash.debounce";
+import { DeleteInfo, ModalInfo, OverwriteInfo } from "../types/modal.js";
+import ConfirmationModal from "./ConfirmationModal.js";
+import { RiDeleteBin6Line } from "react-icons/ri";
+import { FaArrowsRotate } from "react-icons/fa6";
 
 type ExpandedChildrenLength = { path: string; length: number };
 type DepthAndStartInfo = {
@@ -182,6 +188,7 @@ const FileTree = React.memo(
     // Used when filetree is used in breadcrumbs
     const depthToSubtractRef = useRef<number>(0);
     const expandedNodesRef = useRef<ExpandedNode>({});
+    const modalRef = useRef<HTMLDialogElement>(null);
     const dragTimerRef = useRef<{
       [path: string]: {
         dragCounter: number;
@@ -360,6 +367,7 @@ const FileTree = React.memo(
           return;
         }
         const { path } = data;
+
         const parentPath = path.split("/").slice(0, -1).join("/");
         // const fileTreeCopy = structuredClone(fileTree);
         const fileTreeCopy = [...fileTree];
@@ -587,7 +595,6 @@ const FileTree = React.memo(
           }
           pathToFirstLevelChildrenNames.current[pathToCheck] = nameSet;
         }
-        // debugger;
         const lowerCaseNewName = newName.toLowerCase();
         const nameSet = pathToFirstLevelChildrenNames.current[pathToCheck];
         if (nameSet.has(lowerCaseNewName)) {
@@ -817,7 +824,7 @@ const FileTree = React.memo(
         if (node.type === "folder") {
           const renamedPaths: RenamePathObj[] = [];
           const { filesContent } = useWorkspaceStore.getState();
-          updatePath(node, node.path, renamedPaths, filesContent);
+          updatePath(node, node.path, renamedPaths, filesContent, node.depth);
           updateFilePathsInFileTabBar(undefined, renamedPaths);
           setFilesContent({ ...filesContent });
         }
@@ -862,7 +869,13 @@ const FileTree = React.memo(
               if (node.type === "folder") {
                 const renamedPaths: RenamePathObj[] = [];
                 const { filesContent } = useWorkspaceStore.getState();
-                updatePath(node, node.path, renamedPaths, filesContent);
+                updatePath(
+                  node,
+                  node.path,
+                  renamedPaths,
+                  filesContent,
+                  node.depth
+                );
                 // setRenamedPaths(renamedPaths);
                 setFilesContent({ ...filesContent });
                 updateFilePathsInFileTabBar(undefined, renamedPaths);
@@ -1431,26 +1444,29 @@ const FileTree = React.memo(
     );
 
     const handleMoveNodes = useCallback(
-      (sourcePath: string, destPath: string) => {
-        try {
-          const newFileStructure = moveNodes(sourcePath, destPath);
-          if (!newFileStructure) return;
-          setFileTree(newFileStructure);
-          const {
-            flattenedTree: newFlattenedTree,
-            expandedChildrenLength,
-            expandedNodes,
-          } = startPath
-            ? flattenTree(newFileStructure, nodeExpandedState, startPath, true)
-            : flattenTree(newFileStructure, nodeExpandedState);
-          expandedChildrenLengthRef.current = expandedChildrenLength;
-          expandedNodesRef.current = expandedNodes;
-          setFlattenedTree(newFlattenedTree);
-        } catch (error) {
-          throw error;
+      (sourcePath: string, destPath: string, overwrite = false) => {
+        if (!socket) {
+          console.log("Socket not connected");
+          return;
         }
+        
+        const newFileStructure = moveNodes(sourcePath, destPath, overwrite);
+        if (!newFileStructure) return;
+        setFileTree(newFileStructure);
+        const {
+          flattenedTree: newFlattenedTree,
+          expandedChildrenLength,
+          expandedNodes,
+        } = startPath
+          ? flattenTree(newFileStructure, nodeExpandedState, startPath, true)
+          : flattenTree(newFileStructure, nodeExpandedState);
+        expandedChildrenLengthRef.current = expandedChildrenLength;
+        expandedNodesRef.current = expandedNodes;
+        setFlattenedTree(newFlattenedTree);
+        
         const sourceFileName = sourcePath.split("/").pop();
-        socket?.emit(
+        const sourceParentPath = sourcePath.split("/").slice(0, -1).join("/");
+        socket.emit(
           "file:move",
           { sourcePath, destPath },
           (
@@ -1459,9 +1475,12 @@ const FileTree = React.memo(
           ) => {
             if (error) {
               console.error("Error moving files");
+              console.error(error);
               const newFileStructure = moveNodes(
                 destPath + "/" + sourceFileName,
-                sourcePath.split("/").slice(0, -1).join("/")
+                sourceParentPath,
+                overwrite,
+                true
               );
               if (!newFileStructure) return;
               setFileTree(newFileStructure);
@@ -1481,6 +1500,9 @@ const FileTree = React.memo(
               expandedNodesRef.current = expandedNodes;
               setFlattenedTree(newFlattenedTree);
             }
+            delete tempNodeStore[destPath];
+            delete tempNodeStore[sourceParentPath];
+            delete tempOverwriteNodeStore[destPath];
           }
         );
       },
@@ -1488,7 +1510,6 @@ const FileTree = React.memo(
     );
 
     const getButtonHeight = useCallback((path: string, childCount: number) => {
-      // debugger;
       let totalChildrenToCover = 0;
       expandedChildrenLengthRef.current.forEach((node) => {
         if (node.path.startsWith(path) && node.path !== path) {
@@ -1613,7 +1634,10 @@ const FileTree = React.memo(
     const scrollTimeoutId = useRef<NodeJS.Timeout | null>(null);
 
     const treeRef = useRef<HTMLDivElement | null>(null);
-    const curDraggedOverParentPath = useRef<string | null>(null);
+    const curDraggedOverPath = useRef<{
+      path: string | null;
+      basePath: string | null;
+    }>({ path: null, basePath: null });
     const stopScrollDebounce = useMemo(
       () =>
         debounce(() => {
@@ -1637,7 +1661,11 @@ const FileTree = React.memo(
           : ((e.target as HTMLElement).closest(".tree-node") as HTMLDivElement);
 
         if (el) {
-          if (!dragContainerRef.current || !curDraggedOverParentPath.current)
+          if (
+            !dragContainerRef.current ||
+            !curDraggedOverPath.current.basePath ||
+            !curDraggedOverPath.current.path
+          )
             return;
           const { path, depth, index, type, pni } = el.dataset;
           if (type === "folder" && (!path || !depth || !index)) return;
@@ -1668,7 +1696,8 @@ const FileTree = React.memo(
           dragContainerRef.current.style.marginLeft =
             containerPadLeft === 0 ? `2px` : `${containerPadLeft}px`;
           dragContainerRef.current.style.outlineColor =
-            curDraggedOverParentPath.current === containerPath
+            curDraggedOverPath.current.path === containerPath ||
+            curDraggedOverPath.current.basePath === containerPath
               ? "#E52222"
               : "#0079f2";
 
@@ -1713,8 +1742,20 @@ const FileTree = React.memo(
           return;
         }
       },
-      [startScroll, stopScroll, scrollRef, getButtonHeight, padLeft, stopScrollDebounce]
+      [
+        startScroll,
+        stopScroll,
+        scrollRef,
+        getButtonHeight,
+        padLeft,
+        stopScrollDebounce,
+      ]
     );
+
+    const showModal = useCallback((info: DeleteInfo | OverwriteInfo) => {
+      const modalInfo: ModalInfo = { ...info, show: true };
+      setModalInfo(modalInfo);
+    }, []);
 
     const handleDrop = useCallback(
       (e: React.DragEvent<HTMLDivElement>) => {
@@ -1722,13 +1763,16 @@ const FileTree = React.memo(
         e.stopPropagation();
 
         stopScroll();
+
         if (dragContainerRef.current) {
           dragContainerRef.current.style.display = "none";
         }
-        const { path, type } = (
+        const { path, type, pni, index, depth } = (
           (e.target as HTMLElement).closest(".tree-node") as HTMLElement
         ).dataset;
-        if (!path || !type) return;
+        if (!type || !path) return;
+        if (type === "folder" && (!depth || !index)) return;
+        if (type === "file" && (!depth || !pni)) return;
         if (type === "folder") {
           if (
             dragTimerRef.current[path] &&
@@ -1742,36 +1786,58 @@ const FileTree = React.memo(
 
         const draggedPath = e.dataTransfer.getData("text/plain");
         const splitDraggedPath = draggedPath.split("/");
-        const parentPathOfDraggedPath = splitDraggedPath.slice(0, -1).join("/");
-        if (parentPathOfDraggedPath === path) {
+        const name = splitDraggedPath.pop();
+        if (!name) return;
+
+        const destBasePath = type === "folder" ? path : getFolderPath(path);
+        const destPath = `${destBasePath}/${name}`;
+        if (draggedPath === destPath || draggedPath === destBasePath) {
           console.log("Cannot move the file/folder to the same location");
           return;
         }
 
-        const name = splitDraggedPath.pop();
-        if (!name) return;
         const isNameValid = checkIfNameIsValid(name);
         if (!isNameValid) {
           console.error("The name is not valid");
           return;
         }
+
         try {
-          if (type === "file") {
-            const destParentPath = path.split("/").slice(0, -1).join("/");
-            if (!destParentPath) {
-              handleMoveNodes(draggedPath, path);
-            } else {
-              handleMoveNodes(draggedPath, destParentPath);
-            }
-          } else {
-            handleMoveNodes(draggedPath, path);
-          }
+          handleMoveNodes(draggedPath, destBasePath);
         } catch (error) {
           console.error(error);
+          // The error will be always about a file/folder already existing. So only show modal
+          showModal({
+            opType: "overwrite",
+            name,
+            sourcePath: draggedPath,
+            destBasePath,
+          });
         }
       },
-      [handleMoveNodes, stopScroll]
+      [handleMoveNodes, stopScroll, getFolderPath, showModal]
     );
+
+    const [modalInfo, setModalInfo] = useState<ModalInfo | null>(null);
+    useEffect(() => {
+      if (modalInfo?.show) {
+        modalRef.current?.showModal();
+      } else {
+        modalRef.current?.close();
+      }
+    }, [modalInfo?.show]);
+    useEffect(() => {
+      if (!modalRef.current) return;
+      const handleCloseModal = () => {
+        console.log("closed modal");
+        setModalInfo(null);
+      };
+      modalRef.current.addEventListener("close", handleCloseModal);
+      return () => {
+        // if (!modalRef.current) return;
+        modalRef.current?.removeEventListener("close", handleCloseModal);
+      };
+    }, []);
 
     if (!fileTree || !flattenedTree) {
       return null;
@@ -1811,7 +1877,6 @@ const FileTree = React.memo(
                 height={virtualRow.size}
                 start={virtualRow.start}
                 handleRename={handleRename}
-                handleDelete={handleDelete}
                 checkIfNameIsUnique={checkIfNameIsUnique}
                 expandNode={expandNode}
                 deleteNamesSet={deleteNamesSet}
@@ -1823,7 +1888,8 @@ const FileTree = React.memo(
                 scrollRef={scrollRef}
                 workspaceRef={workspaceRef}
                 stopScroll={stopScroll}
-                curDraggedOverParentPath={curDraggedOverParentPath}
+                curDraggedOverPath={curDraggedOverPath}
+                showModal={showModal}
               />
             );
           } else if (node.type === "file") {
@@ -1835,14 +1901,14 @@ const FileTree = React.memo(
                 height={virtualRow.size}
                 start={virtualRow.start}
                 handleRename={handleRename}
-                handleDelete={handleDelete}
                 deleteNamesSet={deleteNamesSet}
                 checkIfNameIsUnique={checkIfNameIsUnique}
                 showEditOptions={startPath ? false : true}
                 scrollRef={scrollRef}
                 workspaceRef={workspaceRef}
                 stopScroll={stopScroll}
-                curDraggedOverParentPath={curDraggedOverParentPath}
+                curDraggedOverPath={curDraggedOverPath}
+                showModal={showModal}
               />
             );
           } else if (node.type === "input") {
@@ -1902,6 +1968,59 @@ const FileTree = React.memo(
           className="absolute hidden rounded-md pointer-events-none drag-container outline-dashed outline-[#0079f2] transition-all duration-200"
           ref={dragContainerRef}
         ></div>
+
+        <dialog
+          ref={modalRef}
+          className="border shadow-[0px_8px_16px_0px_rgba(2, 2, 3, 0.32)] border-[#3C445C] rounded-md max-w-[50%]"
+        >
+          {modalInfo ? (
+            modalInfo.opType === "delete" ? (
+              <ConfirmationModal
+                title={
+                  <>
+                    <p className="text-2xl font-bold">
+                      Delete {modalInfo.nodeType}?
+                    </p>
+                    <p className="mt-7">
+                      Are you sure you want to delete {modalInfo.name}? This
+                      cannot be undone.
+                    </p>
+                  </>
+                }
+                modalRef={modalRef}
+                info={modalInfo}
+                acceptTitle={
+                  <>
+                    <RiDeleteBin6Line />
+                    Yes, delete {modalInfo.nodeType}
+                  </>
+                }
+                acceptCb={handleDelete}
+              />
+            ) : (
+              <ConfirmationModal
+                title={
+                  <>
+                    <p className="text-2xl font-bold">Overwrite file?</p>
+                    <p className="mt-7">
+                      {modalInfo.name} already exists in the destination, are
+                      you sure you want to overwrite it? This cannot be undone.
+                    </p>
+                  </>
+                }
+                modalRef={modalRef}
+                info={modalInfo}
+                acceptTitle={
+                  <>
+                    <FaArrowsRotate />
+                    Yes, overwrite this file
+                  </>
+                }
+                acceptCb={handleMoveNodes}
+              ></ConfirmationModal>
+            )
+          ) : null}
+        </dialog>
       </div>
     );
   }

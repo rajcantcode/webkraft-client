@@ -72,9 +72,12 @@ import {
 } from "material-icon-theme";
 
 import {
+  FileContent,
   FileContentObj,
   FlattenedTreeFileNode,
   FlattenedTreeFolderNode,
+  tempNodeStore,
+  tempOverwriteNodeStore,
   TreeFileNode,
   TreeFolderNode,
 } from "../constants";
@@ -216,7 +219,7 @@ export const getBreadcrumbIcon = (fileOrFolderName: string) => {
 
 export const findNode = (
   nodes: Array<TreeFileNode | TreeFolderNode>,
-  path: string,
+  path: string
 ): TreeFileNode | TreeFolderNode | null => {
   let foundNode = null;
   for (const node of nodes) {
@@ -233,11 +236,13 @@ export const findNode = (
   return foundNode;
 };
 
+// used for updating path and depth of the children of a folder node
 export const updatePath = (
   node: TreeFolderNode,
   newPath: string,
   renamedPaths: RenamePathObj[],
   filesContent: FileContentObj,
+  parentDepth: number
 ) => {
   if (node.children.length === 0) {
     node.path = newPath;
@@ -248,12 +253,14 @@ export const updatePath = (
     if (child.type === "file") {
       const newFilePath = newPath + "/" + child.name;
       renamedPaths.push({ oldPath: child.path, newPath: newFilePath });
+      child.depth = parentDepth + 1;
       filesContent[newFilePath] = filesContent[child.path];
       delete filesContent[child.path];
       child.path = newFilePath;
     } else {
       child.path = newPath + "/" + child.name;
-      updatePath(child, child.path, renamedPaths, filesContent);
+      child.depth = parentDepth + 1;
+      updatePath(child, child.path, renamedPaths, filesContent, child.depth);
     }
   });
 };
@@ -283,7 +290,7 @@ export const addChildrenPathsToDeleteArr = (
   node: TreeFolderNode,
   arr: string[],
   filesContent: FileContentObj,
-  deletedFileContent: FileContentObj | null,
+  deletedFileContent: FileContentObj | null
 ) => {
   node.children.forEach((child) => {
     if (child.type === "file") {
@@ -298,7 +305,7 @@ export const addChildrenPathsToDeleteArr = (
           child,
           arr,
           filesContent,
-          deletedFileContent,
+          deletedFileContent
         );
       }
     }
@@ -307,7 +314,7 @@ export const addChildrenPathsToDeleteArr = (
 
 export const deletePathsFromFilesContentObj = (
   node: TreeFolderNode,
-  filesContent: FileContentObj,
+  filesContent: FileContentObj
 ) => {
   node.children.forEach((child) => {
     if (child.type === "file") {
@@ -320,7 +327,12 @@ export const deletePathsFromFilesContentObj = (
   });
 };
 
-export const moveNodes = (sourcePath: string, destPath: string) => {
+export const moveNodes = (
+  sourcePath: string,
+  destPath: string,
+  overwrite = false,
+  errored = false
+) => {
   const { fileStructure, filesContent, setFilesContent } =
     useWorkspaceStore.getState();
   if (!fileStructure) {
@@ -330,69 +342,137 @@ export const moveNodes = (sourcePath: string, destPath: string) => {
   const filesContentCopy = { ...filesContent };
 
   // Find parent of source node and remove source node from parent's children
-  const sourceNodeParent = findNode(
-    fileStructureCopy,
-    sourcePath.split("/").slice(0, -1).join("/"),
-  );
+  const sourceParentPath = sourcePath.split("/").slice(0, -1).join("/");
+  const sourceNodeParent = errored
+    ? tempNodeStore[sourceParentPath]
+    : findNode(fileStructureCopy, sourceParentPath);
   if (!sourceNodeParent || sourceNodeParent.type === "file") {
     return;
   }
+  if (!errored) {
+    tempNodeStore[sourceNodeParent.path] = sourceNodeParent;
+  }
   const { filteredChildren, foundNode: sourceNode } = filterAndFindNode(
     sourceNodeParent,
-    sourcePath,
+    sourcePath
   );
   if (!sourceNode) {
     return;
   }
 
   // Find destination node and check if source node name is unique
-  const destNode = findNode(fileStructureCopy, destPath);
+  const destNode = errored
+    ? tempNodeStore[destPath]
+    : findNode(fileStructureCopy, destPath);
   if (!destNode || destNode.type === "file") {
     return;
   }
+
+  if (!errored) {
+    tempNodeStore[destNode.path] = destNode;
+  }
+
   const isNameUnique = destNode.children.find(
-    (child) => child.name === sourceNode.name,
+    (child) => child.name === sourceNode.name
   );
-  if (isNameUnique) {
+  if (isNameUnique && !overwrite) {
     throw new Error(
-      `A file or folder ${sourceNode.name} already exists at this location`,
+      `A file or folder ${sourceNode.name} already exists at this location`
     );
   }
 
   //Add source node to destination node's children
   sourceNodeParent.children = filteredChildren;
-
   sourceNode.path = destNode.path + "/" + sourceNode.name;
   sourceNode.depth = destNode.depth + 1;
+  // if isNameUnique is true, that means there is a file or folder with the same name in destination path, and we need to overwrite it
+  if (isNameUnique && !errored) {
+    const {
+      filteredChildren: destFilteredChildren,
+      foundNode: destNodeToDelete,
+    } = filterAndFindNode(destNode, destNode.path + "/" + sourceNode.name);
+    if (destNodeToDelete) {
+      if (destNodeToDelete.type === "file") {
+        tempOverwriteNodeStore[destPath] = {
+          overwrittenNode: destNodeToDelete,
+          fileContent: filesContentCopy[destNodeToDelete.path],
+        };
+        delete filesContentCopy[destNodeToDelete.path];
+        deleteFilePathsInFileTabBar(destNodeToDelete.path, undefined);
+      } else {
+        const delPaths: string[] = [];
+        const deletedFileContent: FileContentObj = {};
+        addChildrenPathsToDeleteArr(
+          destNodeToDelete,
+          delPaths,
+          filesContentCopy,
+          deletedFileContent
+        );
+        tempOverwriteNodeStore[destPath] = {
+          overwrittenNode: destNodeToDelete,
+          fileContent: deletedFileContent,
+        };
+        // deletePathsFromFilesContentObj(destNodeToDelete, filesContentCopy);
+        deleteFilePathsInFileTabBar(undefined, delPaths);
+      }
+    }
+    destNode.children = destFilteredChildren;
+  }
   destNode.children.push(sourceNode);
   sortNodeChildren(destNode);
 
   // Update filesContent and fileTabs based upon whether sourceNode is a file or folder
   if (sourceNode.type === "file") {
-    setFilesContent((prev) => {
-      const newFilesContent = { ...prev, [sourceNode.path]: prev[sourcePath] };
-      delete newFilesContent[sourcePath];
-      return newFilesContent;
-    });
+    // setFilesContent((prev) => {
+    //   const newFilesContent = { ...prev, [sourceNode.path]: prev[sourcePath] };
+    //   delete newFilesContent[sourcePath];
+    //   return newFilesContent;
+    // });
+    filesContentCopy[sourceNode.path] = filesContent[sourcePath];
+    delete filesContentCopy[sourcePath];
     updateFilePathsInFileTabBar(
       { oldPath: sourcePath, newPath: sourceNode.path },
-      undefined,
+      undefined
     );
   } else {
     const renamedPaths: RenamePathObj[] = [];
-    updatePath(sourceNode, sourceNode.path, renamedPaths, filesContentCopy);
+    updatePath(
+      sourceNode,
+      sourceNode.path,
+      renamedPaths,
+      filesContentCopy,
+      sourceNode.depth
+    );
     updateFilePathsInFileTabBar(undefined, renamedPaths);
-    setFilesContent(filesContentCopy);
+    // setFilesContent(filesContentCopy);
   }
+
+  if (errored && overwrite) {
+    const { overwrittenNode, fileContent } =
+      tempOverwriteNodeStore[sourceParentPath];
+    if (overwrittenNode) {
+      if (overwrittenNode.type === "file") {
+        filesContentCopy[overwrittenNode.path] = fileContent as FileContent;
+        sourceNodeParent.children.push(overwrittenNode);
+      } else {
+        Object.keys(fileContent).forEach((path) => {
+          filesContentCopy[path] = (fileContent as FileContentObj)[path];
+        });
+        sourceNodeParent.children.push(overwrittenNode);
+      }
+    }
+  }
+
+  setFilesContent(filesContentCopy);
 
   return fileStructureCopy;
 };
 
 export const filterAndFindNode = (
   parentNode: TreeFolderNode,
-  nodePathToBeFiltered: string,
+  nodePathToBeFiltered: string
 ) => {
-  let filteredChildren: Array<TreeFileNode | TreeFolderNode> = [];
+  const filteredChildren: Array<TreeFileNode | TreeFolderNode> = [];
   let foundNode: TreeFileNode | TreeFolderNode | null = null as
     | TreeFileNode
     | TreeFolderNode
@@ -411,7 +491,7 @@ export const filterAndFindNode = (
 
 export const updateFilePathsInFileTabBar = (
   renamePath: RenamePathObj | undefined,
-  renamePaths: RenamePathObj[] | undefined,
+  renamePaths: RenamePathObj[] | undefined
 ) => {
   const {
     fileTabs,
@@ -427,7 +507,7 @@ export const updateFilePathsInFileTabBar = (
     const updatedFileTabs = Object.keys(fileTabs).reduce((acc, editorId) => {
       // acc[tab === oldPath ? newPath : tab] = fileTabs[tab];
       acc[editorId] = fileTabs[editorId].map((path) =>
-        path === oldPath ? newPath : path,
+        path === oldPath ? newPath : path
       );
       return acc;
     }, {} as FileTabs);
@@ -438,10 +518,10 @@ export const updateFilePathsInFileTabBar = (
     //   (path) => (path === oldPath ? newPath : path)
     // );
     const updatedLastSelectedFilePaths = Object.keys(
-      lastSelectedFilePaths,
+      lastSelectedFilePaths
     ).reduce((acc, editorId) => {
       acc[editorId] = lastSelectedFilePaths[editorId].map((path) =>
-        path === oldPath ? newPath : path,
+        path === oldPath ? newPath : path
       );
       return acc;
     }, {} as LastSelectedFilePaths);
@@ -458,7 +538,7 @@ export const updateFilePathsInFileTabBar = (
             : selectedFilePath[editorId];
         return acc;
       },
-      {} as SelectedFilePath,
+      {} as SelectedFilePath
     );
     setSelectedFilePath(updatedSelectedFilePath);
   } else if (renamePaths) {
@@ -472,7 +552,7 @@ export const updateFilePathsInFileTabBar = (
     renamePaths.forEach(({ oldPath, newPath }) => {
       updatedFileTabs = fileTabKeys.reduce((acc, editorId) => {
         acc[editorId] = updatedFileTabs[editorId].map((path) =>
-          path === oldPath ? newPath : path,
+          path === oldPath ? newPath : path
         );
         return acc;
       }, {} as FileTabs);
@@ -480,11 +560,11 @@ export const updateFilePathsInFileTabBar = (
       updatedLastSelectedFilePaths = lastSelectedFilePathsKeys.reduce(
         (acc, editorId) => {
           acc[editorId] = updatedLastSelectedFilePaths[editorId].map((path) =>
-            path === oldPath ? newPath : path,
+            path === oldPath ? newPath : path
           );
           return acc;
         },
-        {} as LastSelectedFilePaths,
+        {} as LastSelectedFilePaths
       );
 
       updatedSelectedFilePath = selectedFilePathKeys.reduce((acc, editorId) => {
@@ -506,7 +586,7 @@ export const updateFilePathsInFileTabBar = (
 
 export const deleteFilePathsInFileTabBar = (
   deletedPath: string | undefined,
-  deletedPaths: string[] | undefined,
+  deletedPaths: string[] | undefined
 ) => {
   const {
     fileTabs,
@@ -532,7 +612,7 @@ export const deleteFilePathsInFileTabBar = (
         editorsToKeep.push(editorId);
       } else {
         updatedLastSelectedEditorIds = lastSelectedEditorIds.filter(
-          (id) => id !== editorId,
+          (id) => id !== editorId
         );
       }
       return acc;
@@ -541,12 +621,12 @@ export const deleteFilePathsInFileTabBar = (
     //   (path) => path !== deletedPath
     // );
     const updatedLastSelectedFilePaths = Object.keys(
-      lastSelectedFilePaths,
+      lastSelectedFilePaths
     ).reduce((acc, editorId) => {
       // If fileTabs for that editor still exists, then only it makes sense to keep the lastSelectedFilePaths state for that editor
       if (updatedFileTabs[editorId]) {
         acc[editorId] = lastSelectedFilePaths[editorId].filter(
-          (path) => path !== deletedPath,
+          (path) => path !== deletedPath
         );
       }
       return acc;
@@ -565,7 +645,7 @@ export const deleteFilePathsInFileTabBar = (
         }
         return acc;
       },
-      {} as SelectedFilePath,
+      {} as SelectedFilePath
     );
     // Object.keys(updatedFileTabs).forEach((editorId) => {});
     const isActiveEditor = editorsToKeep.find((id) => id === activeEditorId);
@@ -586,14 +666,14 @@ export const deleteFilePathsInFileTabBar = (
     // );
     const updatedFileTabs = Object.keys(fileTabs).reduce((acc, editorId) => {
       const newTabs = fileTabs[editorId].filter(
-        (path) => !deletedPathsSet.has(path),
+        (path) => !deletedPathsSet.has(path)
       );
       if (newTabs.length > 0) {
         acc[editorId] = newTabs;
         editorsToKeep.push(editorId);
       } else {
         updatedLastSelectedEditorIds = lastSelectedEditorIds.filter(
-          (id) => id !== editorId,
+          (id) => id !== editorId
         );
       }
       return acc;
@@ -602,11 +682,11 @@ export const deleteFilePathsInFileTabBar = (
     //   (path) => !deletedPathsSet.has(path)
     // );
     const updatedLastSelectedFilePaths = Object.keys(
-      lastSelectedFilePaths,
+      lastSelectedFilePaths
     ).reduce((acc, editorId) => {
       if (updatedFileTabs[editorId]) {
         acc[editorId] = lastSelectedFilePaths[editorId].filter(
-          (path) => !deletedPathsSet.has(path),
+          (path) => !deletedPathsSet.has(path)
         );
       }
       return acc;
@@ -623,7 +703,7 @@ export const deleteFilePathsInFileTabBar = (
         }
         return acc;
       },
-      {} as SelectedFilePath,
+      {} as SelectedFilePath
     );
     const isActiveEditor = editorsToKeep.find((id) => id === activeEditorId);
     if (!isActiveEditor) {

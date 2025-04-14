@@ -133,3 +133,16 @@ export const folderChildCount: { [key: string]: number } = {};
 // Then in handleEditorDidMount, check if model exists, if not create new one and set position and scrolltop.
 // Have an effect on activeEditorId which checks if model exists and does the same thing as stated above. We do this in here too because when a editor is closed and the other editor available is switched to automatically, currSelectedFilePath is not changed, which is responsible to call handleEditorDidMount. But activeEditorId is changed, so we can use that to check if model exists and set position and scrolltop.
 // create some file, add some content to it. Place the cursor somewhere in between. Then from terminal using vi delte the line on which the cursor was set. :wq. check what happens
+
+export const tempNodeStore: { [path: string]: TreeFolderNode } = {};
+export const tempOverwriteNodeStore: {
+  [path: string]:
+    | {
+        overwrittenNode: TreeFileNode;
+        fileContent: FileContent;
+      }
+    | {
+        overwrittenNode: TreeFolderNode;
+        fileContent: FileContentObj;
+      };
+} = {};

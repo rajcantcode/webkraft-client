@@ -52,7 +52,6 @@ const TreeInput = ({
   );
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     e.stopPropagation();
-    // debugger;
     // If user is adding a file or folder in the node_modules path whose children are not yet loaded, we just set value and don't check for name validity or uniqueness
     if (
       node.path.includes("node_modules") &&
@@ -118,7 +117,6 @@ const TreeInput = ({
       return;
     }
     // Determine if e is focus event or form event
-    // debugger;
     // If there is an error, and user is submitting by pressing enter key, just return, so the error will be shown
     if (error && e.type === "submit") {
       if (

@@ -1,4 +1,10 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import Editor from "../components/Editor";
 import NoFileSelected from "../components/NoFileSelected";
 import {
@@ -109,9 +115,13 @@ const Workspace = () => {
     retry: false,
   });
 
-  const request = debounce((size: number) => {
-    setTerminalContainerSize(size);
-  }, 200);
+  const request = useMemo(
+    () =>
+      debounce((size: number) => {
+        setTerminalContainerSize(size);
+      }, 200),
+    []
+  );
 
   const handleConsoleResize = useCallback(
     (size: number) => {

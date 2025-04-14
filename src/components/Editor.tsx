@@ -66,9 +66,15 @@ const Editor = ({
   const setSearchPosition = useWorkspaceStore(
     (state) => state.setSearchPosition
   );
-  const [currSelectedFilePath, setCurrSelectedFilePath] = useState(
-    selectedFilePath[editorId]
+  // const [currSelectedFilePath, setCurrSelectedFilePath] = useState(
+  //   selectedFilePath[editorId]
+  // );
+
+  const currSelectedFilePath = useMemo(
+    () => selectedFilePath[editorId],
+    [editorId, selectedFilePath]
   );
+
   // This ref is just used in the callback of onDidBlurEditorText event listener to get the current selected file path.
   const currSelectedFilePathRef = useRef<string>(currSelectedFilePath);
   const [cursorPos, setCursorPos] = useState<number>(1);
@@ -78,9 +84,9 @@ const Editor = ({
   const symbolsRef = useRef<{ [path: string]: Symbol }>({});
   const modelRef = useRef<ITextModel | null>(null);
 
-  useEffect(() => {
-    setCurrSelectedFilePath(selectedFilePath[editorId]);
-  }, [editorId, setCurrSelectedFilePath, selectedFilePath]);
+  // useEffect(() => {
+  //   setCurrSelectedFilePath(selectedFilePath[editorId]);
+  // }, [editorId, setCurrSelectedFilePath, selectedFilePath]);
 
   // Only extract the necessary information from the navigation tree
   const getSimplifiedSymbolInfo = useCallback(
@@ -148,6 +154,16 @@ const Editor = ({
     },
     [getSimplifiedSymbolInfo]
   );
+
+  const getScrollOffsetAndCursorPos = useCallback(() => {
+    if (!editorRef.current) return;
+
+    const editor = editorRef.current;
+    const cursorPos = editor.getPosition();
+    if (!cursorPos) return;
+    const scrollOffset = editor.getScrollTop();
+    return { cursorPos, scrollOffset };
+  }, []);
 
   const handleEditorDidMount = useCallback(
     async (
@@ -242,8 +258,7 @@ const Editor = ({
       setActiveEditorId,
       editorId,
       setLastSelectedEditorIds,
-      searchPosition,
-      setSearchPosition,
+      getScrollOffsetAndCursorPos,
     ]
   );
 
@@ -425,16 +440,6 @@ const Editor = ({
     ]
   );
 
-  const getScrollOffsetAndCursorPos = useCallback(() => {
-    if (!editorRef.current) return;
-
-    const editor = editorRef.current;
-    const cursorPos = editor.getPosition();
-    if (!cursorPos) return;
-    const scrollOffset = editor.getScrollTop();
-    return { cursorPos, scrollOffset };
-  }, []);
-
   const debouncedFileEdit = useMemo(
     () => debounce(handleFileEdit, 500),
     [handleFileEdit]
@@ -490,7 +495,13 @@ const Editor = ({
       setLastSelectedEditorIds(filteredLastSelectedEditorIds);
       setLastPathBeforeClosingEditor(currSelectedFilePath);
     }
-  }, [currSelectedFilePath, editorId]);
+  }, [
+    currSelectedFilePath,
+    editorId,
+    setActiveEditorId,
+    setLastSelectedEditorIds,
+    setSelectedFilePath,
+  ]);
 
   useHotkeys(
     `${OS === "mac" ? "meta+w" : "ctrl+w"}`,

@@ -9,23 +9,18 @@ import React, {
   useState,
 } from "react";
 import { Input } from "./ui/Input";
-import DeleteFileModal from "./DeleteConfirmationModal";
 import { IoMdSend } from "react-icons/io";
 import { useWorkspaceStore } from "../store";
 import { createPortal } from "react-dom";
 import { nanoid } from "nanoid";
 import { TooltipWrapper } from "./ui/ToolTip";
+import { DeleteInfo, OverwriteInfo } from "../types/modal";
 
 type HandleRename = (
   pni: number,
   depth: number,
   path: string,
   newName: string,
-  type: "file" | "folder"
-) => void;
-type HandleDelete = (
-  path: string,
-  pni: number,
   type: "file" | "folder"
 ) => void;
 type CheckIfNameIsUnique = (
@@ -44,13 +39,13 @@ const TreeFile = React.memo(
     start,
     checkIfNameIsUnique,
     handleRename,
-    handleDelete,
     deleteNamesSet,
     showEditOptions,
     scrollRef,
     workspaceRef,
     stopScroll,
-    curDraggedOverParentPath,
+    curDraggedOverPath,
+    showModal,
   }: {
     node: FlattenedTreeFileNode;
     padLeft: number;
@@ -58,13 +53,16 @@ const TreeFile = React.memo(
     start: number;
     checkIfNameIsUnique: CheckIfNameIsUnique;
     handleRename: HandleRename;
-    handleDelete: HandleDelete;
     deleteNamesSet: DeleteNamesSet;
     showEditOptions: boolean;
     scrollRef: React.RefObject<HTMLDivElement>;
     workspaceRef: React.RefObject<HTMLDivElement> | null;
     stopScroll: () => void;
-    curDraggedOverParentPath: React.MutableRefObject<string | null>;
+    curDraggedOverPath: React.MutableRefObject<{
+      path: string | null;
+      basePath: string | null;
+    }>;
+    showModal: (info: DeleteInfo | OverwriteInfo) => void;
   }) => {
     const [inputState, setInputState] = useState({
       show: false,
@@ -83,7 +81,6 @@ const TreeFile = React.memo(
     );
     const setEditorIds = useWorkspaceStore((state) => state.setEditorIds);
     const inputRef = useRef<HTMLInputElement>(null);
-    const deleteFileModalRef = useRef<HTMLDialogElement>(null);
     const parentPath = useMemo(
       () => node.path.split("/").slice(0, -1).join("/"),
       [node.path]
@@ -112,7 +109,14 @@ const TreeFile = React.memo(
               setInputState({ show: true, value: node.name, error: "" });
               return;
             case "del-file":
-              deleteFileModalRef.current?.showModal();
+              // deleteFileModalRef.current?.showModal();
+              showModal({
+                opType: "delete",
+                path: node.path,
+                pni: node.pni,
+                nodeType: node.type,
+                name: node.name,
+              });
               return;
           }
         } else {
@@ -156,9 +160,10 @@ const TreeFile = React.memo(
         (
           e.currentTarget.querySelector(".edit-options") as HTMLElement
         )?.style.setProperty("display", "none");
-        curDraggedOverParentPath.current = parentPath;
+        curDraggedOverPath.current.path = node.path;
+        curDraggedOverPath.current.basePath = parentPath;
       },
-      [node.path, parentPath, curDraggedOverParentPath]
+      [node.path, parentPath, curDraggedOverPath]
     );
 
     const handleDragEnd = useCallback(
@@ -170,9 +175,10 @@ const TreeFile = React.memo(
         (
           e.currentTarget.querySelector(".edit-options") as HTMLElement
         )?.style.removeProperty("display");
-        curDraggedOverParentPath.current = null;
+        curDraggedOverPath.current.path = null;
+        curDraggedOverPath.current.basePath = null;
       },
-      [stopScroll, curDraggedOverParentPath]
+      [stopScroll, curDraggedOverPath]
     );
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -350,19 +356,6 @@ const TreeFile = React.memo(
               ) : null}
             </>
           )}
-          <dialog
-            ref={deleteFileModalRef}
-            className="border shadow-[0px_8px_16px_0px_rgba(2, 2, 3, 0.32)] border-[#3C445C] rounded-md"
-          >
-            <DeleteFileModal
-              type={node.type}
-              name={node.name}
-              modalRef={deleteFileModalRef}
-              path={node.path}
-              pni={node.pni}
-              handleDelete={handleDelete}
-            />
-          </dialog>
         </div>
       </div>
     );

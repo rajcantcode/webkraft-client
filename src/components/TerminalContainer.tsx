@@ -14,6 +14,7 @@ import { RxCross2 } from "react-icons/rx";
 import ResizableTerminalPane from "./ResizableTerminalPane";
 import debounce from "lodash.debounce";
 import { TooltipWrapper } from "./ui/ToolTip";
+import { useWorkspaceStore } from "../store";
 const TerminalContainer = ({
   defaultPid,
   socket,
@@ -30,6 +31,12 @@ const TerminalContainer = ({
   const [activePid, setActivePid] = useState<string>(defaultPid);
   const [terminalContainerSize, setTerminalContainerSize] = useState<number>(
     defaultTerminalContainerSize
+  );
+  const openPathAtTerminal = useWorkspaceStore(
+    (state) => state.openPathAtTerminal
+  );
+  const setOpenPathAtTerminal = useWorkspaceStore(
+    (state) => state.setOpenPathAtTerminal
   );
 
   const request = useMemo(
@@ -60,6 +67,12 @@ const TerminalContainer = ({
       window.removeEventListener("resize", handleWindowResize);
     };
   }, [handleTerminalResize]);
+
+  useEffect(() => {
+    if (!openPathAtTerminal) return;
+    addTerminal(undefined, openPathAtTerminal);
+    setOpenPathAtTerminal(null);
+  }, [openPathAtTerminal]);
   const splitTerminal = useCallback(
     (terminalId: string, parentPaneId: string) => {
       if (!socket) return;
@@ -80,7 +93,7 @@ const TerminalContainer = ({
         return;
       }
 
-      socket.emit("term:new", (error: Error | null, pid: string) => {
+      socket.emit("term:new", undefined, (error: Error | null, pid: string) => {
         if (error) {
           console.log(error);
           return;
@@ -95,7 +108,7 @@ const TerminalContainer = ({
         setActivePid(pid);
       });
     },
-    [terminalPanes, setTerminalPanes, socket, setActivePaneId]
+    [terminalPanes, socket]
   );
 
   const killTerminal = useCallback(
@@ -142,30 +155,33 @@ const TerminalContainer = ({
         setTerminalPanes(terminalPanesCopy);
       });
     },
-    [terminalPanes, setTerminalPanes, socket, setActivePaneId]
+    [terminalPanes, socket]
   );
 
-  const addTerminal = (e: React.MouseEvent<HTMLButtonElement>) => {
-    e.stopPropagation();
-    e.preventDefault();
-    if (!socket) return;
-    socket.emit("term:new", (error: Error | null, pid: string) => {
-      if (error) {
-        console.log(error);
-        return;
-      }
-      const newPaneId = nanoid(4);
-      const newTerminalId = nanoid(4);
-      setTerminalPanes([
-        ...terminalPanes,
-        { id: newPaneId, terminals: [{ id: newTerminalId, pid }] },
-      ]);
-      setActivePaneId(newPaneId);
-      setActivePid(pid);
-    });
-  };
+  const addTerminal = useCallback(
+    (e?: React.MouseEvent<HTMLButtonElement>, initCWD?: string) => {
+      e?.stopPropagation();
+      e?.preventDefault();
+      if (!socket) return;
+      socket.emit("term:new", initCWD, (error: Error | null, pid: string) => {
+        if (error) {
+          console.log(error);
+          return;
+        }
+        const newPaneId = nanoid(4);
+        const newTerminalId = nanoid(4);
+        setTerminalPanes([
+          ...terminalPanes,
+          { id: newPaneId, terminals: [{ id: newTerminalId, pid }] },
+        ]);
+        setActivePaneId(newPaneId);
+        setActivePid(pid);
+      });
+    },
+    [socket, terminalPanes]
+  );
 
-  const clearTerminal = () => {
+  const clearTerminal = useCallback(() => {
     if (!socket) return;
     socket.emit("term:clear", activePid, (error: Error | null) => {
       if (error) {
@@ -173,33 +189,36 @@ const TerminalContainer = ({
         return;
       }
     });
-  };
+  }, [activePid, socket]);
 
-  const handlePaneClick = (
-    e: React.MouseEvent<HTMLDivElement, MouseEvent>,
-    terminalId: string,
-    terminalPid: string,
-    parentPaneId: string
-  ) => {
-    e.stopPropagation();
-    e.preventDefault();
-    const actionSelected = (e.target as HTMLElement)
-      .closest(".action-icon")
-      ?.getAttribute("data-action");
-    if (actionSelected) {
-      switch (actionSelected) {
-        case "split":
-          splitTerminal(terminalId, parentPaneId);
-          break;
-        case "kill":
-          killTerminal(terminalId, parentPaneId);
-          break;
+  const handlePaneClick = useCallback(
+    (
+      e: React.MouseEvent<HTMLDivElement, MouseEvent>,
+      terminalId: string,
+      terminalPid: string,
+      parentPaneId: string
+    ) => {
+      e.stopPropagation();
+      e.preventDefault();
+      const actionSelected = (e.target as HTMLElement)
+        .closest(".action-icon")
+        ?.getAttribute("data-action");
+      if (actionSelected) {
+        switch (actionSelected) {
+          case "split":
+            splitTerminal(terminalId, parentPaneId);
+            break;
+          case "kill":
+            killTerminal(terminalId, parentPaneId);
+            break;
+        }
+      } else {
+        setActivePaneId(parentPaneId);
+        setActivePid(terminalPid);
       }
-    } else {
-      setActivePaneId(parentPaneId);
-      setActivePid(terminalPid);
-    }
-  };
+    },
+    [killTerminal, splitTerminal]
+  );
   return (
     <div className="w-full h-full term-container">
       <div className="w-full heading flex items-center justify-end p-1 bg-[#171D2D]">

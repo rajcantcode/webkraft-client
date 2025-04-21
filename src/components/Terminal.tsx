@@ -21,7 +21,6 @@ const Terminal = ({
   paneId: string;
   activePaneId: string;
 }) => {
-  if (!socket) return null;
   const terminalRef = useRef<HTMLDivElement>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
   const xTerminal = useRef<XTerminal | null>(null);
@@ -33,6 +32,7 @@ const Terminal = ({
   }, []);
 
   useEffect(() => {
+    if (!socket) return;
     const terminal = new XTerminal({
       cursorBlink: false,
       cursorStyle: "block",
@@ -86,13 +86,10 @@ const Terminal = ({
           if (error) {
             console.error(error);
           }
-        },
+        }
       );
       // window.addEventListener("resize", fitTerminal);
     }
-    terminal.write(
-      `\x1b[38;2;88;171;255m~/${useWorkspaceStore.getState().name}\x1b[0m$ `,
-    );
 
     terminal.onData((data) => socket.emit("term:write", { data, pid }));
     terminal.onResize(({ cols, rows }) => {
@@ -115,9 +112,6 @@ const Terminal = ({
     const clearTerminal = (resPid: string) => {
       if (resPid === pid) {
         terminal.clear();
-        terminal.write(
-          `\x1b[38;2;88;171;255m~/${useWorkspaceStore.getState().name}\x1b[0m$ `,
-        );
       }
     };
 

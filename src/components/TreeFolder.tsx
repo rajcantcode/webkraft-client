@@ -131,7 +131,7 @@ const TreeFolder = React.memo(
         if (actionSelected) {
           if (
             !isOpen &&
-            actionSelected !== "del-folder" &&
+            actionSelected !== "delete" &&
             actionSelected !== "rename"
           ) {
             if (
@@ -171,7 +171,7 @@ const TreeFolder = React.memo(
               insertInputNode(node.index, "add-folder", node.depth);
               // handleAddFolder();
               return;
-            case "del-folder":
+            case "delete":
               showModal({
                 opType: "delete",
                 nodeType: node.type,
@@ -210,6 +210,7 @@ const TreeFolder = React.memo(
         getChildren,
         insertInputNode,
         isOpen,
+        showModal,
       ]
     );
 
@@ -456,7 +457,7 @@ const TreeFolder = React.memo(
                       containerRef={workspaceRef}
                     >
                       <div
-                        data-action="del-folder"
+                        data-action="delete"
                         className="transition-transform hover:scale-[1.1] scale-100 action-icon"
                       >
                         <AiOutlineDelete />

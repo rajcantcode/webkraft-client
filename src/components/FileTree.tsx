@@ -46,8 +46,24 @@ import { LoadingNode as LoadingNodeType } from "../constants.js";
 import debounce from "lodash.debounce";
 import { DeleteInfo, ModalInfo, OverwriteInfo } from "../types/modal.js";
 import ConfirmationModal from "./ConfirmationModal.js";
-import { RiDeleteBin6Line } from "react-icons/ri";
+import { RiDeleteBin6Line, RiFileCopyLine } from "react-icons/ri";
 import { FaArrowsRotate } from "react-icons/fa6";
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSeparator,
+  ContextMenuTrigger,
+} from "./ui/ContextMenu.js";
+import {
+  AiOutlineDelete,
+  AiOutlineEdit,
+  AiOutlineFileAdd,
+  AiOutlineFolderAdd,
+} from "react-icons/ai";
+import { FiClipboard } from "react-icons/fi";
+import { FaFileDownload } from "react-icons/fa";
+import { BsTerminal } from "react-icons/bs";
 
 type ExpandedChildrenLength = { path: string; length: number };
 type DepthAndStartInfo = {
@@ -175,6 +191,9 @@ const FileTree = React.memo(
       (state) => state.selectedFilePath
     );
     const activeEditorId = useWorkspaceStore((state) => state.activeEditorId);
+    const setOpenPathAtTerminal = useWorkspaceStore(
+      (state) => state.setOpenPathAtTerminal
+    );
     const [currSelectedFilePath, setCurrSelectedFilePath] = useState<string>(
       selectedFilePath[activeEditorId]
     );
@@ -224,6 +243,7 @@ const FileTree = React.memo(
     }>({});
     const visibleNodesRef = useRef<Set<string>>(new Set<string>());
     const dragContainerRef = useRef<HTMLDivElement>(null);
+    const [contextInfo, setContextInfo] = useState<HTMLDivElement | null>(null);
     const [pathToScroll, setPathToScroll] = useState<string | null>(null);
 
     useEffect(() => {
@@ -285,11 +305,11 @@ const FileTree = React.memo(
 
     useEffect(() => {
       if (!socket) return;
-      const handleFileAdd = (data: { path: string }) => {
+      const handleFileAdd = (data: { path: string; content: string }) => {
         if (!fileTree) {
           return;
         }
-        const { path } = data;
+        const { path, content } = data;
         const parentPath = path.split("/").slice(0, -1).join("/");
         // const fileTreeCopy = structuredClone(fileTree);
         const fileTreeCopy = [...fileTree];
@@ -318,7 +338,7 @@ const FileTree = React.memo(
             ...prev,
             [path]: {
               name: fileName!,
-              content: "",
+              content,
               language: fileExtension
                 ? editorSupportedLanguages[fileExtension] || "text"
                 : "text",
@@ -1257,7 +1277,7 @@ const FileTree = React.memo(
     );
 
     const handleAddFile = useCallback(
-      (pni: number, depth: number, fileName: string) => {
+      (pni: number, depth: number, fileName: string, content?: string) => {
         if (!fileTree || !flattenedTree) {
           return;
         }
@@ -1267,14 +1287,20 @@ const FileTree = React.memo(
           removeInputNode(pni);
           deleteNamesSet(pni);
           throw new Error(
-            `The name ${fileName} is not valid. Please choose a different name.`
+            `The name ${fileName} is not valid. Please choose a different name.`,
+            {
+              cause: "invalid-name",
+            }
           );
         }
         if (!isNameUnique) {
           removeInputNode(pni);
           deleteNamesSet(pni);
           throw new Error(
-            `A file or folder ${fileName} already exists at this location. Please choose a different name.`
+            `A file or folder ${fileName} already exists at this location. Please choose a different name.`,
+            {
+              cause: "duplicate-name",
+            }
           );
         }
         deleteNamesSet(pni);
@@ -1296,7 +1322,7 @@ const FileTree = React.memo(
           ...prev,
           [pathToAdd]: {
             name: fileName,
-            content: "",
+            content: content || "",
             language: fileExtension
               ? editorSupportedLanguages[fileExtension] || "text"
               : "text",
@@ -1523,9 +1549,14 @@ const FileTree = React.memo(
     }, []);
 
     const handleRightClick = (e: React.MouseEvent<HTMLDivElement>) => {
-      // e.stopPropagation();
-      // console.log(e.target.closest());
-      // console.log(e.currentTarget);
+      const el = (e.target as HTMLDivElement).closest(
+        ".tree-node"
+      ) as HTMLDivElement;
+      if (!el) {
+        setContextInfo(null);
+        return;
+      }
+      setContextInfo(el);
     };
 
     const getFolderPath = useCallback((filePath: string) => {
@@ -1841,191 +1872,474 @@ const FileTree = React.memo(
       };
     }, []);
 
+    const downloadFile = useCallback(
+      (
+        filename: string,
+        content: string,
+        contentType: string = "text/plain"
+      ) => {
+        const blob = new Blob([content], { type: contentType });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      },
+      []
+    );
+
+    const handleDuplicateFile = useCallback(
+      (tryCount: number) => {
+        if (!contextInfo) return;
+        const { path, pni, depth } = contextInfo.dataset;
+        if (!path || !pni || !depth) return;
+        const fileName = path.split("/").pop();
+        if (!fileName) return;
+        const filesContent = useWorkspaceStore.getState().filesContent;
+        const dotIndex = fileName.lastIndexOf(".");
+        let dupFileName: string;
+        if (dotIndex === -1) {
+          dupFileName =
+            tryCount > 0
+              ? `${fileName} (copy) ${tryCount}`
+              : `${fileName} (copy)`;
+        } else if (dotIndex === 0) {
+          dupFileName =
+            tryCount > 0
+              ? fileName + ` (copy) ${tryCount}`
+              : fileName + " (copy)";
+        } else {
+          dupFileName =
+            tryCount > 0
+              ? `${fileName.substring(
+                  0,
+                  dotIndex
+                )} (copy)${tryCount}${fileName.substring(dotIndex)}`
+              : `${fileName.substring(0, dotIndex)} (copy)${fileName.substring(
+                  dotIndex
+                )}`;
+        }
+        try {
+          handleAddFile(
+            Number(pni),
+            Number(depth),
+            dupFileName,
+            filesContent[path].content
+          );
+        } catch (error) {
+          if ((error as Error).cause === "duplicate-name") {
+            handleDuplicateFile(tryCount + 1);
+          }
+        }
+      },
+      [contextInfo, handleAddFile]
+    );
+
+    const handleSelect = useCallback(
+      async (e: Event) => {
+        console.log((e.currentTarget as HTMLDivElement).dataset.action);
+        const action = (e.currentTarget as HTMLDivElement).dataset.action;
+        if (!action || !contextInfo) return;
+        switch (action) {
+          case "rename":
+            setTimeout(() => {
+              (
+                contextInfo.querySelector(
+                  '[data-action="rename"]'
+                ) as HTMLDivElement
+              ).click();
+            }, 10);
+            break;
+          case "delete":
+            setTimeout(() => {
+              (
+                contextInfo.querySelector(
+                  '[data-action="delete"]'
+                ) as HTMLDivElement
+              )?.click();
+            }, 10);
+            break;
+          case "duplicate":
+            handleDuplicateFile(0);
+            break;
+          case "copy-path": {
+            const path = contextInfo.dataset.path;
+            if (!path) return;
+            const slashInd = path.indexOf("/");
+            if (slashInd === -1) return;
+            await navigator.clipboard.writeText(path.slice(slashInd + 1));
+            // ToDo -> Show a toast message
+            break;
+          }
+          case "download": {
+            const path = contextInfo.dataset.path;
+            const filesContent = useWorkspaceStore.getState().filesContent;
+            if (!path) return;
+            downloadFile(path.split("/").pop()!, filesContent[path].content);
+            break;
+          }
+          case "add-file":
+            setTimeout(() => {
+              (
+                contextInfo.querySelector(
+                  '[data-action="add-file"]'
+                ) as HTMLDivElement
+              )?.click();
+            }, 10);
+            break;
+          case "add-folder":
+            setTimeout(() => {
+              (
+                contextInfo.querySelector(
+                  '[data-action="add-folder"]'
+                ) as HTMLDivElement
+              )?.click();
+            }, 10);
+            break;
+          case "open-terminal": {
+            const { path, type } = contextInfo.dataset;
+            if (!path || !type || type === "file") return;
+            // debugger;
+            setOpenPathAtTerminal(path);
+            break;
+          }
+          default:
+            break;
+        }
+      },
+      [contextInfo, downloadFile, handleDuplicateFile, setOpenPathAtTerminal]
+    );
+
     if (!fileTree || !flattenedTree) {
       return null;
     }
     return (
-      <div
-        className={`w-full cursor-pointer tree-container bg-[#171D2D] relative`}
-        onContextMenu={handleRightClick}
-        style={{ height: `${virtualizer.getTotalSize()}px` }}
-        onDragEnter={handleDragEnter}
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
-        onDrop={handleDrop}
-        ref={treeRef}
-      >
-        {virtualizer.getVirtualItems().map((virtualRow, i) => {
-          if (i === 0) visibleNodesRef.current.clear();
-          const node = flattenedTree[virtualRow.index];
-
-          // scrollRef.current?.
-          const isInOverscan =
-            virtualRow.start < scrollRef.current!.scrollTop ||
-            virtualRow.end >
-              scrollRef.current!.scrollTop + scrollRef.current!.clientHeight;
-          if (!isInOverscan) {
-            visibleNodesRef.current.add(node.path);
-          }
-
-          if (node.type === "folder") {
-            const { depth } = node;
-            if (expandedNodesRef.current[node.path]) {
-              expandedNodesRef.current[node.path].start = virtualRow.start;
-            }
-            return (
-              <TreeFolder
-                node={node}
-                padLeft={(depth - depthToSubtractRef.current) * padLeft}
-                key={node.path}
-                height={virtualRow.size}
-                start={virtualRow.start}
-                handleRename={handleRename}
-                checkIfNameIsUnique={checkIfNameIsUnique}
-                expandNode={expandNode}
-                deleteNamesSet={deleteNamesSet}
-                closeNode={closeNode}
-                getChildren={getChildren}
-                insertInputNode={insertInputNode}
-                isNodeModulesChildrenReceived={isNodeModulesChildrenReceived}
-                showEditOptions={startPath ? false : true}
-                scrollRef={scrollRef}
-                workspaceRef={workspaceRef}
-                stopScroll={stopScroll}
-                curDraggedOverPath={curDraggedOverPath}
-                showModal={showModal}
-              />
-            );
-          } else if (node.type === "file") {
-            return (
-              <TreeFile
-                node={node}
-                padLeft={(node.depth - depthToSubtractRef.current) * padLeft}
-                key={node.path}
-                height={virtualRow.size}
-                start={virtualRow.start}
-                handleRename={handleRename}
-                deleteNamesSet={deleteNamesSet}
-                checkIfNameIsUnique={checkIfNameIsUnique}
-                showEditOptions={startPath ? false : true}
-                scrollRef={scrollRef}
-                workspaceRef={workspaceRef}
-                stopScroll={stopScroll}
-                curDraggedOverPath={curDraggedOverPath}
-                showModal={showModal}
-              />
-            );
-          } else if (node.type === "input") {
-            return (
-              <TreeInput
-                node={node}
-                key={node.path}
-                height={virtualRow.size}
-                start={virtualRow.start}
-                padLeft={node.depth * padLeft}
-                checkIfNameIsUnique={checkIfNameIsUnique}
-                isNodeModulesChildrenReceived={isNodeModulesChildrenReceived}
-                handleAddFile={handleAddFile}
-                handleAddFolder={handleAddFolder}
-                removeInputNode={removeInputNode}
-                deleteNamesSet={deleteNamesSet}
-                scrollRef={scrollRef}
-              />
-            );
-          } else if (node.type === "loading") {
-            return (
-              <LoadingNode
-                padLeft={node.depth * padLeft}
-                key={node.path}
-                height={virtualRow.size}
-                start={virtualRow.start}
-              />
-            );
-          } else {
-            return null;
-          }
-        })}
-
-        {Object.keys(expandedNodesRef.current).map((path, i) => {
-          const expandNodeInfo = expandedNodesRef.current[path];
-          const { depth, childCount, start } = expandNodeInfo;
-
-          const padding = (depth - depthToSubtractRef.current) * padLeft;
-          const buttonHeight = getButtonHeight(path, childCount);
-
-          return (
-            <button
-              className={`absolute top-0 left-0 w-2 group ${path}`}
-              key={path}
-              style={{
-                height: `${buttonHeight}px`,
-                transform: `translate(${padding + 7}px, ${start + itemSize}px)`,
-              }}
-              onClick={() => closeNode(path)}
-            >
-              <div className="w-[1px] h-full group-hover:bg-[#0079f2] bg-[#9DA2A6] bg-opacity-30 group-hover:bg-opacity-100"></div>
-            </button>
-          );
-        })}
-
-        <div
-          className="absolute hidden rounded-md pointer-events-none drag-container outline-dashed outline-[#0079f2] transition-all duration-200"
-          ref={dragContainerRef}
-        ></div>
-
-        <dialog
-          ref={modalRef}
-          className="border shadow-[0px_8px_16px_0px_rgba(2, 2, 3, 0.32)] border-[#3C445C] rounded-md max-w-[50%]"
-        >
-          {modalInfo ? (
-            modalInfo.opType === "delete" ? (
-              <ConfirmationModal
-                title={
-                  <>
-                    <p className="text-2xl font-bold">
-                      Delete {modalInfo.nodeType}?
-                    </p>
-                    <p className="mt-7">
-                      Are you sure you want to delete {modalInfo.name}? This
-                      cannot be undone.
-                    </p>
-                  </>
-                }
-                modalRef={modalRef}
-                info={modalInfo}
-                acceptTitle={
-                  <>
-                    <RiDeleteBin6Line />
-                    Yes, delete {modalInfo.nodeType}
-                  </>
-                }
-                acceptCb={handleDelete}
-              />
+      <ContextMenu>
+        <ContextMenuTrigger disabled={startPath ? true : false}>
+          <ContextMenuContent className=" bg-[#1B2333] border-[#4E5569] text-xs p-1 cursor-pointer">
+            {contextInfo && contextInfo.dataset.type === "file" ? (
+              <>
+                <ContextMenuItem
+                  className="text-xs font-semibold cursor-pointer hover:bg-[#2B3245]"
+                  onSelect={handleSelect}
+                  data-action="rename"
+                >
+                  <div className="flex items-center gap-2">
+                    <AiOutlineEdit />
+                    Rename
+                  </div>
+                </ContextMenuItem>
+                <ContextMenuSeparator className="bg-[#4E5569] bg-opacity-50 " />
+                <ContextMenuItem
+                  className="text-xs font-semibold cursor-pointer hover:bg-[#2B3245]"
+                  onSelect={handleSelect}
+                  data-action="delete"
+                >
+                  <div className="flex items-center gap-2">
+                    <AiOutlineDelete />
+                    Delete
+                  </div>
+                </ContextMenuItem>
+                <ContextMenuSeparator className="bg-[#4E5569] bg-opacity-50" />
+                <ContextMenuItem
+                  className="text-xs font-semibold cursor-pointer hover:bg-[#2B3245]"
+                  onSelect={handleSelect}
+                  data-action="duplicate"
+                >
+                  <div className="flex items-center gap-2">
+                    <RiFileCopyLine />
+                    Duplicate file
+                  </div>
+                </ContextMenuItem>
+                <ContextMenuSeparator className="bg-[#4E5569] bg-opacity-50" />
+                <ContextMenuItem
+                  className="text-xs font-semibold cursor-pointer hover:bg-[#2B3245]"
+                  onSelect={handleSelect}
+                  data-action="copy-path"
+                >
+                  <div className="flex items-center gap-2">
+                    <FiClipboard />
+                    Copy path
+                  </div>
+                </ContextMenuItem>
+                <ContextMenuSeparator className="bg-[#4E5569] bg-opacity-50" />
+                <ContextMenuItem
+                  className="text-xs font-semibold cursor-pointer hover:bg-[#2B3245]"
+                  onSelect={handleSelect}
+                  data-action="download"
+                >
+                  <div className="flex items-center gap-2">
+                    <FaFileDownload />
+                    Download
+                  </div>
+                </ContextMenuItem>
+              </>
             ) : (
-              <ConfirmationModal
-                title={
-                  <>
-                    <p className="text-2xl font-bold">Overwrite file?</p>
-                    <p className="mt-7">
-                      {modalInfo.name} already exists in the destination, are
-                      you sure you want to overwrite it? This cannot be undone.
-                    </p>
-                  </>
+              <>
+                <ContextMenuItem
+                  className="text-xs font-semibold cursor-pointer hover:bg-[#2B3245]"
+                  onSelect={handleSelect}
+                  data-action="add-file"
+                >
+                  <div className="flex items-center gap-2">
+                    <AiOutlineFileAdd />
+                    Add file
+                  </div>
+                </ContextMenuItem>
+                <ContextMenuSeparator className="bg-[#4E5569] bg-opacity-50" />
+                <ContextMenuItem
+                  className="text-xs font-semibold cursor-pointer hover:bg-[#2B3245]"
+                  onSelect={handleSelect}
+                  data-action="add-folder"
+                >
+                  <div className="flex items-center gap-2">
+                    <AiOutlineFolderAdd />
+                    Add folder
+                  </div>
+                </ContextMenuItem>
+                <ContextMenuSeparator className="bg-[#4E5569] bg-opacity-50" />
+                <ContextMenuItem
+                  className="text-xs font-semibold cursor-pointer hover:bg-[#2B3245]"
+                  onSelect={handleSelect}
+                  data-action="rename"
+                >
+                  <div className="flex items-center gap-2">
+                    <AiOutlineEdit />
+                    Rename
+                  </div>
+                </ContextMenuItem>
+                <ContextMenuSeparator className="bg-[#4E5569] bg-opacity-50" />
+                <ContextMenuItem
+                  className="text-xs font-semibold cursor-pointer hover:bg-[#2B3245]"
+                  onSelect={handleSelect}
+                  data-action="delete"
+                >
+                  <div className="flex items-center gap-2">
+                    <AiOutlineDelete />
+                    Delete
+                  </div>
+                </ContextMenuItem>
+                <ContextMenuSeparator className="bg-[#4E5569] bg-opacity-50" />
+                <ContextMenuItem
+                  className="text-xs font-semibold cursor-pointer hover:bg-[#2B3245]"
+                  onSelect={handleSelect}
+                  data-action="open-terminal"
+                >
+                  <div className="flex items-center gap-2">
+                    <BsTerminal />
+                    Open terminal here
+                  </div>
+                </ContextMenuItem>
+                <ContextMenuSeparator className="bg-[#4E5569] bg-opacity-50" />
+                <ContextMenuItem
+                  className="text-xs font-semibold cursor-pointer hover:bg-[#2B3245]"
+                  onSelect={handleSelect}
+                  data-action="copy-path"
+                >
+                  <div className="flex items-center gap-2">
+                    <FiClipboard />
+                    Copy path
+                  </div>
+                </ContextMenuItem>
+              </>
+            )}
+          </ContextMenuContent>
+          <div
+            className={`w-full cursor-pointer tree-container bg-[#171D2D] relative`}
+            onContextMenu={handleRightClick}
+            style={{ height: `${virtualizer.getTotalSize()}px` }}
+            onDragEnter={handleDragEnter}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+            ref={treeRef}
+          >
+            {virtualizer.getVirtualItems().map((virtualRow, i) => {
+              if (i === 0) visibleNodesRef.current.clear();
+              const node = flattenedTree[virtualRow.index];
+
+              // scrollRef.current?.
+              const isInOverscan =
+                virtualRow.start < scrollRef.current!.scrollTop ||
+                virtualRow.end >
+                  scrollRef.current!.scrollTop +
+                    scrollRef.current!.clientHeight;
+              if (!isInOverscan) {
+                visibleNodesRef.current.add(node.path);
+              }
+
+              if (node.type === "folder") {
+                const { depth } = node;
+                if (expandedNodesRef.current[node.path]) {
+                  expandedNodesRef.current[node.path].start = virtualRow.start;
                 }
-                modalRef={modalRef}
-                info={modalInfo}
-                acceptTitle={
-                  <>
-                    <FaArrowsRotate />
-                    Yes, overwrite this file
-                  </>
-                }
-                acceptCb={handleMoveNodes}
-              ></ConfirmationModal>
-            )
-          ) : null}
-        </dialog>
-      </div>
+                return (
+                  <TreeFolder
+                    node={node}
+                    padLeft={(depth - depthToSubtractRef.current) * padLeft}
+                    key={node.path}
+                    height={virtualRow.size}
+                    start={virtualRow.start}
+                    handleRename={handleRename}
+                    checkIfNameIsUnique={checkIfNameIsUnique}
+                    expandNode={expandNode}
+                    deleteNamesSet={deleteNamesSet}
+                    closeNode={closeNode}
+                    getChildren={getChildren}
+                    insertInputNode={insertInputNode}
+                    isNodeModulesChildrenReceived={
+                      isNodeModulesChildrenReceived
+                    }
+                    showEditOptions={startPath ? false : true}
+                    scrollRef={scrollRef}
+                    workspaceRef={workspaceRef}
+                    stopScroll={stopScroll}
+                    curDraggedOverPath={curDraggedOverPath}
+                    showModal={showModal}
+                  />
+                );
+              } else if (node.type === "file") {
+                return (
+                  <TreeFile
+                    node={node}
+                    padLeft={
+                      (node.depth - depthToSubtractRef.current) * padLeft
+                    }
+                    key={node.path}
+                    height={virtualRow.size}
+                    start={virtualRow.start}
+                    handleRename={handleRename}
+                    deleteNamesSet={deleteNamesSet}
+                    checkIfNameIsUnique={checkIfNameIsUnique}
+                    showEditOptions={startPath ? false : true}
+                    scrollRef={scrollRef}
+                    workspaceRef={workspaceRef}
+                    stopScroll={stopScroll}
+                    curDraggedOverPath={curDraggedOverPath}
+                    showModal={showModal}
+                  />
+                );
+              } else if (node.type === "input") {
+                return (
+                  <TreeInput
+                    node={node}
+                    key={node.path}
+                    height={virtualRow.size}
+                    start={virtualRow.start}
+                    padLeft={node.depth * padLeft}
+                    checkIfNameIsUnique={checkIfNameIsUnique}
+                    isNodeModulesChildrenReceived={
+                      isNodeModulesChildrenReceived
+                    }
+                    handleAddFile={handleAddFile}
+                    handleAddFolder={handleAddFolder}
+                    removeInputNode={removeInputNode}
+                    deleteNamesSet={deleteNamesSet}
+                    scrollRef={scrollRef}
+                  />
+                );
+              } else if (node.type === "loading") {
+                return (
+                  <LoadingNode
+                    padLeft={node.depth * padLeft}
+                    key={node.path}
+                    height={virtualRow.size}
+                    start={virtualRow.start}
+                  />
+                );
+              } else {
+                return null;
+              }
+            })}
+
+            {Object.keys(expandedNodesRef.current).map((path, i) => {
+              const expandNodeInfo = expandedNodesRef.current[path];
+              const { depth, childCount, start } = expandNodeInfo;
+
+              const padding = (depth - depthToSubtractRef.current) * padLeft;
+              const buttonHeight = getButtonHeight(path, childCount);
+
+              return (
+                <button
+                  className={`absolute top-0 left-0 w-2 group ${path}`}
+                  key={path}
+                  style={{
+                    height: `${buttonHeight}px`,
+                    transform: `translate(${padding + 7}px, ${
+                      start + itemSize
+                    }px)`,
+                  }}
+                  onClick={() => closeNode(path)}
+                >
+                  <div className="w-[1px] h-full group-hover:bg-[#0079f2] bg-[#9DA2A6] bg-opacity-30 group-hover:bg-opacity-100"></div>
+                </button>
+              );
+            })}
+
+            <div
+              className="absolute hidden rounded-md pointer-events-none drag-container outline-dashed outline-[#0079f2] transition-all duration-200"
+              ref={dragContainerRef}
+            ></div>
+
+            <dialog
+              ref={modalRef}
+              className="border shadow-[0px_8px_16px_0px_rgba(2, 2, 3, 0.32)] border-[#3C445C] rounded-md max-w-[50%]"
+            >
+              {modalInfo ? (
+                modalInfo.opType === "delete" ? (
+                  <ConfirmationModal
+                    title={
+                      <>
+                        <p className="text-2xl font-bold">
+                          Delete {modalInfo.nodeType}?
+                        </p>
+                        <p className="mt-7">
+                          Are you sure you want to delete {modalInfo.name}? This
+                          cannot be undone.
+                        </p>
+                      </>
+                    }
+                    modalRef={modalRef}
+                    info={modalInfo}
+                    acceptTitle={
+                      <>
+                        <RiDeleteBin6Line />
+                        Yes, delete {modalInfo.nodeType}
+                      </>
+                    }
+                    acceptCb={handleDelete}
+                  />
+                ) : (
+                  <ConfirmationModal
+                    title={
+                      <>
+                        <p className="text-2xl font-bold">Overwrite file?</p>
+                        <p className="mt-7">
+                          {modalInfo.name} already exists in the destination,
+                          are you sure you want to overwrite it? This cannot be
+                          undone.
+                        </p>
+                      </>
+                    }
+                    modalRef={modalRef}
+                    info={modalInfo}
+                    acceptTitle={
+                      <>
+                        <FaArrowsRotate />
+                        Yes, overwrite this file
+                      </>
+                    }
+                    acceptCb={handleMoveNodes}
+                  ></ConfirmationModal>
+                )
+              ) : null}
+            </dialog>
+          </div>
+        </ContextMenuTrigger>
+      </ContextMenu>
     );
   }
 );

@@ -55,6 +55,7 @@ type WorkspaceStore = {
   activeEditorId: string;
   lastPathBeforeClosingEditor: string;
   // Used when a search result is clicked and we need to scroll to the position
+  openPathAtTerminal: string | null;
   searchPosition: {
     lineNumber: number;
     column: number;
@@ -100,6 +101,7 @@ type WorkspaceStore = {
       matchIndex: number;
     } | null
   ) => void;
+  setOpenPathAtTerminal: (path: string | null) => void;
 };
 
 export const useUserStore = create<UserStore>((set) => ({
@@ -126,6 +128,7 @@ export const useWorkspaceStore = create<WorkspaceStore>(
       activeEditorId: "",
       lastPathBeforeClosingEditor: "",
       searchPosition: null,
+      openPathAtTerminal: null,
       setWorkspaceData: (name, link, baseLink, policy, fileStructure) =>
         set(
           { name, link, baseLink, policy, fileStructure },
@@ -232,6 +235,8 @@ export const useWorkspaceStore = create<WorkspaceStore>(
         set({ activeEditorId: editorId }, undefined, "setActiveEditorId"),
       setSearchPosition: (position) =>
         set({ searchPosition: position }, undefined, "setSearchPosition"),
+      setOpenPathAtTerminal: (path) =>
+        set({ openPathAtTerminal: path }, undefined, "setOpenPathAtTerminal"),
     }),
     { trace: true }
   )

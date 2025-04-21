@@ -108,7 +108,7 @@ const TreeFile = React.memo(
             case "rename":
               setInputState({ show: true, value: node.name, error: "" });
               return;
-            case "del-file":
+            case "delete":
               // deleteFileModalRef.current?.showModal();
               showModal({
                 opType: "delete",
@@ -347,7 +347,7 @@ const TreeFile = React.memo(
                     containerRef={workspaceRef}
                   >
                     <div
-                      data-action="del-file"
+                      data-action="delete"
                       className="transition-transform hover:scale-[1.1] scale-100 action-icon"
                     >
                       <AiOutlineDelete />

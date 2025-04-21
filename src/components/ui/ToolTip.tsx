@@ -60,6 +60,7 @@ const TooltipWrapper = React.memo(
   }
 );
 
+TooltipWrapper.displayName = "TooltipWrapper";
 export {
   Tooltip,
   TooltipTrigger,

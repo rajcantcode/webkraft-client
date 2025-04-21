@@ -63,6 +63,7 @@ const FileTabBar = ({
   const setLastSelectedFilePaths = useWorkspaceStore(
     (state) => state.setLastSelectedFilePaths
   );
+  const containerRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(
     () => setCurrSelectedFilePath(selectedFilePath[editorId]),
@@ -203,7 +204,10 @@ const FileTabBar = ({
   ]);
 
   return (
-    <div className="tab-container h-[30px] w-full flex items-center justify-between">
+    <div
+      className="tab-container h-[30px] w-full flex items-center justify-between"
+      ref={containerRef}
+    >
       <ScrollArea
         className="w-full h-full"
         onDragOver={handleDragOver}
@@ -222,7 +226,10 @@ const FileTabBar = ({
                 key={tab}
                 onClick={(e) => handleTabClick(e, tab)}
               >
-                <TooltipWrapper title={tab.match(regex)![1]}>
+                <TooltipWrapper
+                  title={tab.match(regex)![1]}
+                  containerRef={containerRef}
+                >
                   <div className="flex items-center gap-2 px-1 name-and-logo hover:bg-[#1C2333] h-full">
                     <img
                       src={getFileIcon(fileName)}
@@ -243,6 +250,7 @@ const FileTabBar = ({
                         : "Ctrl+W"
                       : ""
                   }`}
+                  containerRef={containerRef}
                 >
                   <button
                     className={cn(

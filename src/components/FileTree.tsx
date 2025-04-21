@@ -70,7 +70,6 @@ type DepthAndStartInfo = {
   depth: number;
   childCount: number;
   index: number; // Index of the node in the flattened tree (used to calculate the start(y) position)
-  start: number;
 };
 type ExpandedNode = { [path: string]: DepthAndStartInfo };
 type NodeExpandedState = {
@@ -123,7 +122,6 @@ const flattenTree = (
         depth: node.depth,
         childCount: node.children.length,
         index: currentIndex,
-        start: 0,
       };
       if (parentPath) {
         expandedChildrenLength.push({
@@ -671,6 +669,12 @@ const FileTree = React.memo(
         }
         const flattenedTreeCopy = [...flatTree];
         flattenedTreeCopy.splice(index + 1, 0, inputNode);
+        for (let i = index + 2; i < flattenedTreeCopy.length; i++) {
+          const path = flattenedTreeCopy[i].path;
+          if (expandedNodesRef.current[path]) {
+            expandedNodesRef.current[path].index++;
+          }
+        }
         setFlattenedTree(flattenedTreeCopy);
       },
       [flattenedTree, setFlattenedTree]
@@ -687,6 +691,12 @@ const FileTree = React.memo(
         if (temp) temp.length--;
         const flattenedTreeCopy = [...flattenedTree];
         flattenedTreeCopy.splice(pni + 1, 1);
+        for (let i = pni + 1; i < flattenedTreeCopy.length; i++) {
+          const path = flattenedTreeCopy[i].path;
+          if (expandedNodesRef.current[path]) {
+            expandedNodesRef.current[path].index--;
+          }
+        }
         setFlattenedTree(flattenedTreeCopy);
       },
       [flattenedTree, setFlattenedTree]
@@ -2173,9 +2183,7 @@ const FileTree = React.memo(
 
               if (node.type === "folder") {
                 const { depth } = node;
-                if (expandedNodesRef.current[node.path]) {
-                  expandedNodesRef.current[node.path].start = virtualRow.start;
-                }
+
                 return (
                   <TreeFolder
                     node={node}
@@ -2257,8 +2265,8 @@ const FileTree = React.memo(
 
             {Object.keys(expandedNodesRef.current).map((path, i) => {
               const expandNodeInfo = expandedNodesRef.current[path];
-              const { depth, childCount, start } = expandNodeInfo;
-
+              const { depth, childCount } = expandNodeInfo;
+              const start = expandNodeInfo.index * itemSize + 6;
               const padding = (depth - depthToSubtractRef.current) * padLeft;
               const buttonHeight = getButtonHeight(path, childCount);
 

@@ -22,9 +22,10 @@ import {
   PropertySVG,
 } from "./BreadcrumbIconsSvg";
 import { Socket } from "socket.io-client";
-import { getBreadcrumbIcon } from "../lib/utils";
+import { findNode, getBreadcrumbIcon } from "../lib/utils";
 import { ScrollArea, ScrollBar } from "./ui/ScrollArea";
 import FileTreeWrapper from "./FileTree";
+import { useWorkspaceStore } from "../store";
 
 type SymbolsToDisplay = {
   [depth: number]: Symbol[];
@@ -55,6 +56,65 @@ const BreadCrumbWrapper = React.memo(
     const [openedDropDown, setOpenedDropDown] = useState<string>("");
     const [highlightedSymbol, setHighlightedSymbol] =
       useState<HighlightedSymbol>({});
+    const fileTree = useWorkspaceStore((state) => state.fileStructure);
+
+    const splittedFilePath = useMemo(() => filePath.split("/"), [filePath]);
+    const startPaths = useMemo(() => {
+      const arr: string[] = [];
+      splittedFilePath.forEach((path, index) => {
+        if (index === 0) return;
+        let startPath = "";
+        for (let i = 0; i < index; i++) {
+          startPath +=
+            i === 0 ? `${splittedFilePath[i]}` : `/${splittedFilePath[i]}`;
+        }
+        arr.push(startPath);
+      });
+      return arr;
+    }, [splittedFilePath]);
+
+    const [startPathChildrenCount, setStartPathChildrenCount] = useState<{
+      [startPath: string]: number;
+    }>(() => {
+      if (!fileTree) return {};
+      const spcCopy: { [startPath: string]: number } = {};
+      startPaths.forEach((startPath) => {
+        const node = findNode(fileTree, startPath);
+        if (!node || node.type === "file") {
+          console.log("Node not found or is a file for path: ", startPath);
+          console.log(node?.type);
+          return;
+        }
+        spcCopy[startPath] = node.children.length;
+      });
+      return spcCopy;
+    });
+
+    useEffect(() => {
+      if (!fileTree) return;
+      const spcCopy = { ...startPathChildrenCount };
+      startPaths.forEach((startPath) => {
+        if (spcCopy[startPath]) return;
+        const node = findNode(fileTree, startPath);
+        if (!node || node.type === "file") return;
+        spcCopy[startPath] = node.children.length;
+      });
+      setStartPathChildrenCount(spcCopy);
+    }, [startPaths]);
+
+    useEffect(() => {
+      if (!fileTree) return;
+      const spcCopy = { ...startPathChildrenCount };
+      Object.keys(spcCopy).forEach((startPath) => {
+        const node = findNode(fileTree, startPath);
+        if (!node || node.type === "file") {
+          delete spcCopy[startPath];
+          return;
+        }
+        spcCopy[startPath] = node.children.length;
+      });
+      setStartPathChildrenCount(spcCopy);
+    }, [fileTree]);
 
     const getSymbolsToDisplay = useCallback(
       (
@@ -141,13 +201,16 @@ const BreadCrumbWrapper = React.memo(
                           </DropdownMenuTrigger>
                           <DropdownMenuContent
                             align="start"
-                            className="max-h-[400px] min-w-[165px] max-w-[300px] border-[#4E5569] px-0 rounded-md bg-[#0E1525] overflow-auto"
+                            className="max-h-[400px] min-w-[165px] max-w-[300px] border-[#4E5569] px-0 py-0 rounded-md bg-[#0E1525] overflow-auto menu-content"
                           >
-                            <DropdownMenuItem className="flex p-0 overflow-hidden">
+                            <DropdownMenuItem className="flex w-full h-full p-0 menu-item">
                               <FileTreeWrapper
                                 fileFetchStatus={fileFetchStatus}
                                 socket={socket}
                                 startPath={path}
+                                startPathChildCount={
+                                  startPathChildrenCount[path] || 0
+                                }
                                 padLeft={8}
                                 workspaceRef={null}
                               />

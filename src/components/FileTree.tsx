@@ -173,6 +173,7 @@ const FileTree = React.memo(
     scrollRef,
     // path from which to start the flattened tree, is only passed when used in breadcrumbs
     startPath = "",
+    startPathChildCount = 0,
     workspaceRef,
   }: {
     padLeft: number;
@@ -180,6 +181,7 @@ const FileTree = React.memo(
     socket: Socket | null;
     scrollRef: React.RefObject<HTMLDivElement>;
     startPath?: string;
+    startPathChildCount?: number;
     workspaceRef: React.RefObject<HTMLDivElement> | null;
   }) => {
     const fileTree = useWorkspaceStore((state) => state.fileStructure);
@@ -1703,6 +1705,7 @@ const FileTree = React.memo(
           ? (e.target as HTMLDivElement)
           : ((e.target as HTMLElement).closest(".tree-node") as HTMLDivElement);
 
+        // debugger;
         if (el) {
           if (
             !dragContainerRef.current ||
@@ -1719,25 +1722,44 @@ const FileTree = React.memo(
             type === "file" ? path!.split("/").slice(0, -1).join("/") : path!;
           const containerDepth =
             type === "file" ? Number(depth) - 1 : Number(depth);
-          const offSetIndex = type === "file" ? Number(pni) : Number(index);
+          let offSetIndex = type === "file" ? Number(pni) : Number(index);
+          if (offSetIndex === -1 && startPath && startPath === containerPath) {
+            offSetIndex = 0;
+          }
 
-          const transformY = offSetIndex * itemSize + 6;
+          const transformY = startPath
+            ? startPath === containerPath
+              ? 1
+              : offSetIndex * itemSize
+            : offSetIndex * itemSize + 6;
           const childCount =
-            expandedNodesRef.current[containerPath]?.childCount;
+            startPath && startPath === containerPath
+              ? startPathChildCount
+              : expandedNodesRef.current[containerPath]?.childCount;
           const containerHeight =
-            getButtonHeight(containerPath, childCount ? childCount : 0) +
-            itemSize;
+            startPath && startPath === containerPath
+              ? getButtonHeight(containerPath, childCount ? childCount : 0) - 2
+              : getButtonHeight(containerPath, childCount ? childCount : 0) +
+                itemSize;
           const containerPadLeft =
-            (containerDepth - depthToSubtractRef.current) * padLeft;
+            startPath && startPath === containerPath
+              ? padLeft
+              : (containerDepth - depthToSubtractRef.current) * padLeft;
 
           dragContainerRef.current.style.transform = `translateY(${transformY}px)`;
           dragContainerRef.current.style.height = `${containerHeight}px`;
-          dragContainerRef.current.style.width = `calc(100% - ${
-            containerPadLeft + 5
-          }px)`;
+          dragContainerRef.current.style.width =
+            startPath && startPath === containerPath
+              ? `calc(100% - ${containerPadLeft}px)`
+              : `calc(100% - ${containerPadLeft + 5}px)`;
 
           dragContainerRef.current.style.marginLeft =
-            containerPadLeft === 0 ? `2px` : `${containerPadLeft}px`;
+            startPath && startPath === containerPath
+              ? `4px`
+              : containerPadLeft === 0
+              ? `2px`
+              : `${containerPadLeft}px`;
+          // dragContainerRef.current.style.marginLeft = `${containerPadLeft}px`;
           dragContainerRef.current.style.outlineColor =
             curDraggedOverPath.current.path === containerPath ||
             curDraggedOverPath.current.basePath === containerPath
@@ -1792,6 +1814,8 @@ const FileTree = React.memo(
         getButtonHeight,
         padLeft,
         stopScrollDebounce,
+        startPath,
+        startPathChildCount,
       ]
     );
 
@@ -2266,7 +2290,9 @@ const FileTree = React.memo(
             {Object.keys(expandedNodesRef.current).map((path, i) => {
               const expandNodeInfo = expandedNodesRef.current[path];
               const { depth, childCount } = expandNodeInfo;
-              const start = expandNodeInfo.index * itemSize + 6;
+              const start = startPath
+                ? expandNodeInfo.index * itemSize
+                : expandNodeInfo.index * itemSize + 6;
               const padding = (depth - depthToSubtractRef.current) * padLeft;
               const buttonHeight = getButtonHeight(path, childCount);
 
@@ -2359,6 +2385,7 @@ const FileTreeWrapper = React.memo(
     socket,
     // path from which to start the flattened tree, is only passed when used in breadcrumbs
     startPath = "",
+    startPathChildCount = 0,
     className = "",
     workspaceRef,
   }: {
@@ -2366,6 +2393,7 @@ const FileTreeWrapper = React.memo(
     fileFetchStatus: { [key: string]: boolean };
     socket: Socket | null;
     startPath?: string;
+    startPathChildCount?: number;
     className?: string;
     workspaceRef: React.RefObject<HTMLDivElement> | null;
   }) => {
@@ -2384,6 +2412,7 @@ const FileTreeWrapper = React.memo(
           fileFetchStatus={fileFetchStatus}
           socket={socket}
           startPath={startPath}
+          startPathChildCount={startPathChildCount}
           scrollRef={scrollRef}
           workspaceRef={workspaceRef}
         />

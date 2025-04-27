@@ -203,6 +203,14 @@ const FileTabBar = ({
     editorId,
   ]);
 
+  const handleDragStart = useCallback(
+    (e: React.DragEvent<HTMLDivElement>, path: string) => {
+      e.dataTransfer.setData("text/plain", path);
+      e.dataTransfer.effectAllowed = "copy";
+    },
+    []
+  );
+
   return (
     <div
       className="tab-container h-[30px] w-full flex items-center justify-between"
@@ -223,6 +231,8 @@ const FileTabBar = ({
                     ? "bg-[#1B2333] border-0 before:content-[''] before:absolute before:top-0 before:left-0 before:right-0 before:h-[1px] before:bg-[#0179F2] text-[#f5f9fc]"
                     : "text-[#c2c8cc]"
                 }`}
+                draggable={true}
+                onDragStart={(e) => handleDragStart(e, tab)}
                 key={tab}
                 onClick={(e) => handleTabClick(e, tab)}
               >

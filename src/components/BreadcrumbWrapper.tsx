@@ -201,7 +201,7 @@ const BreadCrumbWrapper = React.memo(
                           </DropdownMenuTrigger>
                           <DropdownMenuContent
                             align="start"
-                            className="max-h-[400px] min-w-[165px] max-w-[300px] border-[#4E5569] px-0 py-0 rounded-md bg-[#0E1525] overflow-auto menu-content"
+                            className="max-h-[400px] min-w-[165px] max-w-[300px] border-[#4E5569] px-0 py-1 rounded-md bg-[#171D2D] overflow-auto menu-content"
                           >
                             <DropdownMenuItem className="flex w-full h-full p-0 menu-item">
                               <FileTreeWrapper

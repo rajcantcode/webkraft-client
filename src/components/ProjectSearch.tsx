@@ -353,44 +353,54 @@ export const ProjectSearch = ({
     });
   }, []);
 
-  useHotkeys(
-    `${OS === "mac" ? "alt+meta+c" : "alt+c"}`,
-    (e) => {
+  const hotKeyOptions = useMemo(
+    () => ({
+      enabled: isVisible,
+      enableOnContentEditable: true,
+      enableOnFormTags: true,
+    }),
+    [isVisible]
+  );
+  const toggleMatchCase = useCallback(
+    (e: KeyboardEvent) => {
       e.preventDefault();
       e.stopPropagation();
       toggleSearchOptions("mc", false);
     },
-    {
-      enabled: isVisible,
-      enableOnContentEditable: true,
-      enableOnFormTags: true,
-    }
+    [toggleSearchOptions]
   );
-  useHotkeys(
-    `${OS === "mac" ? "alt+meta+w" : "alt+w"}`,
-    (e) => {
+  const toggleMatchWholeWord = useCallback(
+    (e: KeyboardEvent) => {
       e.preventDefault();
       e.stopPropagation();
       toggleSearchOptions("mww", false);
     },
-    {
-      enabled: isVisible,
-      enableOnContentEditable: true,
-      enableOnFormTags: true,
-    }
+    [toggleSearchOptions]
   );
-  useHotkeys(
-    `${OS === "mac" ? "alt+meta+r" : "alt+r"}`,
-    (e) => {
+  const toggleUseRegex = useCallback(
+    (e: KeyboardEvent) => {
       e.preventDefault();
       e.stopPropagation();
       toggleSearchOptions("useRegex", false);
     },
-    {
-      enabled: isVisible,
-      enableOnContentEditable: true,
-      enableOnFormTags: true,
-    }
+    [toggleSearchOptions]
+  );
+
+  useHotkeys(
+    `${OS === "mac" ? "alt+meta+c" : "alt+c"}`,
+    toggleMatchCase,
+    hotKeyOptions
+  );
+
+  useHotkeys(
+    `${OS === "mac" ? "alt+meta+w" : "alt+w"}`,
+    toggleMatchWholeWord,
+    hotKeyOptions
+  );
+  useHotkeys(
+    `${OS === "mac" ? "alt+meta+r" : "alt+r"}`,
+    toggleUseRegex,
+    hotKeyOptions
   );
 
   const handleOnInput = useCallback(
@@ -756,7 +766,7 @@ export const ProjectSearch = ({
           </div>
         ) : null}
       </div>
-      <div className="h-full search-results">
+      <div className="flex-1 overflow-auto search-results">
         {searchResults ? (
           <Results
             searchTerm={inputStateRef.current.searchPattern}

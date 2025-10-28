@@ -12,8 +12,8 @@ export type TreeFileNode = {
 export const OS = window.navigator.userAgent.includes("Mac")
   ? "mac"
   : window.navigator.userAgent.includes("Linux")
-  ? "linux"
-  : "win";
+    ? "linux"
+    : "win";
 
 export type TreeFolderNode = {
   name: string;
@@ -146,3 +146,5 @@ export const tempOverwriteNodeStore: {
         fileContent: FileContentObj;
       };
 } = {};
+
+export const tempFileContentStore: { [path: string]: string } = {};

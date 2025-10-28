@@ -54,8 +54,9 @@ type WorkspaceStore = {
   lastSelectedEditorIds: string[];
   activeEditorId: string;
   lastPathBeforeClosingEditor: string;
-  // Used when a search result is clicked and we need to scroll to the position
+  shouldBeginExitWorkspaceProcess: boolean;
   openPathAtTerminal: string | null;
+  // Used when a search result is clicked and we need to scroll to the position
   searchPosition: {
     lineNumber: number;
     column: number;
@@ -102,6 +103,9 @@ type WorkspaceStore = {
     } | null
   ) => void;
   setOpenPathAtTerminal: (path: string | null) => void;
+  setShouldBeginExitWorkspaceProcess: (
+    shouldBeginExitWorkspaceProcess: boolean
+  ) => void;
 };
 
 export const useUserStore = create<UserStore>((set) => ({
@@ -129,6 +133,7 @@ export const useWorkspaceStore = create<WorkspaceStore>(
       lastPathBeforeClosingEditor: "",
       searchPosition: null,
       openPathAtTerminal: null,
+      shouldBeginExitWorkspaceProcess: false,
       setWorkspaceData: (name, link, baseLink, policy, fileStructure) =>
         set(
           { name, link, baseLink, policy, fileStructure },
@@ -214,6 +219,13 @@ export const useWorkspaceStore = create<WorkspaceStore>(
             filesContent: {},
             fileTabs: {},
             lastSelectedFilePaths: {},
+            editorIds: [],
+            lastSelectedEditorIds: [],
+            activeEditorId: "",
+            lastPathBeforeClosingEditor: "",
+            searchPosition: null,
+            openPathAtTerminal: null,
+            shouldBeginExitWorkspaceProcess: false,
           },
           undefined,
           "clearWorkspaceData"
@@ -237,6 +249,12 @@ export const useWorkspaceStore = create<WorkspaceStore>(
         set({ searchPosition: position }, undefined, "setSearchPosition"),
       setOpenPathAtTerminal: (path) =>
         set({ openPathAtTerminal: path }, undefined, "setOpenPathAtTerminal"),
+      setShouldBeginExitWorkspaceProcess: (shouldBegin) =>
+        set(
+          { shouldBeginExitWorkspaceProcess: shouldBegin },
+          undefined,
+          "setShouldBeginExitWorkspaceProcess"
+        ),
     }),
     { trace: true }
   )

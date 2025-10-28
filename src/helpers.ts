@@ -123,7 +123,51 @@ export const loadFilesOfFolder = async (
 export const loadFilesOfNodeModulesFolder = async (
   folder: TreeFolderNode,
   fileFetchStatus: { [key: string]: boolean },
-  socketLink: string
+  socket: Socket | null,
+) => {
+  if (!socket) return;
+  const fileContentObj: FileContentObj = {};
+  const { setFilesContent, filesContent: currentFilesContent } =
+    useWorkspaceStore.getState();
+  const files = folder.children.filter(
+    (child) =>
+      child.type === "file" && currentFilesContent[child.path] === undefined,
+  );
+  files.forEach((file, index) => {
+    fileFetchStatus[file.path] = true;
+    socket.emit(
+      "get:files",
+      { path: file.path },
+      (
+        error: { msg: string } | null,
+        data: { content: string; end: boolean; stream: boolean } | null,
+      ) => {
+        if (error) {
+          console.error(error.msg);
+          return;
+        }
+        if (data && data.content && data.end && !data.stream) {
+          const fileExtension = file.name.split(".").pop();
+          fileContentObj[file.path] = {
+            name: file.name,
+            content: data.content,
+            language: fileExtension
+              ? editorSupportedLanguages[fileExtension] || "text"
+              : "text",
+          };
+          fileFetchStatus[file.path] = false;
+        }
+        if (index === files.length - 1) {
+          setFilesContent({ ...currentFilesContent, ...fileContentObj });
+        }
+      },
+    );
+  });
+};
+export const loadFilesOfNodeModulesFolder2 = async (
+  folder: TreeFolderNode,
+  fileFetchStatus: { [key: string]: boolean },
+  socketLink: string,
 ) => {
   const fileContentObj: FileContentObj = {};
   const { setFilesContent, filesContent: currentFilesContent } =

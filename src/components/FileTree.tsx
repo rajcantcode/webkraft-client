@@ -17,6 +17,7 @@ import {
   tempInputInfo,
   tempNodeStore,
   tempOverwriteNodeStore,
+  tempFileContentStore,
 } from "../constants.js";
 import TreeFolder from "./TreeFolder.js";
 import TreeFile from "./TreeFile.js";
@@ -349,9 +350,18 @@ const FileTree = React.memo(
 
       const handleFileChange = (data: { path: string; content: string }) => {
         const { path, content } = data;
+        const fileExtension = path.split(".").pop();
         setFilesContent((prev) => ({
           ...prev,
-          [path]: { ...prev[path], content },
+          [path]: prev[path]
+            ? { ...prev[path], content }
+            : {
+                name: path.slice(path.lastIndexOf("/") + 1),
+                content: content,
+                language: fileExtension
+                  ? editorSupportedLanguages[fileExtension] || "text"
+                  : "text",
+              },
         }));
       };
 
@@ -556,9 +566,40 @@ const FileTree = React.memo(
         }));
       };
 
+      const handleFileChunk = (data: {
+        filepath: string;
+        chunk: string;
+        end: boolean;
+      }) => {
+        if (data.end && tempFileContentStore[data.filepath]) {
+          const { setFilesContent, filesContent: currentFilesContent } =
+            useWorkspaceStore.getState();
+          const fileExtension = data.filepath.split(".").pop();
+          setFilesContent({
+            ...currentFilesContent,
+            [data.filepath]: {
+              name: data.filepath.slice(data.filepath.lastIndexOf("/") + 1),
+              content: tempFileContentStore[data.filepath],
+              language: fileExtension
+                ? editorSupportedLanguages[fileExtension] || "text"
+                : "text",
+            },
+          });
+          delete tempFileContentStore[data.filepath];
+          fileFetchStatus[data.filepath] = false;
+        } else {
+          if (tempFileContentStore[data.filepath]) {
+            tempFileContentStore[data.filepath] += data.chunk;
+          } else {
+            tempFileContentStore[data.filepath] = data.chunk;
+          }
+        }
+      };
+
       socket.on("file:add", handleFileAdd);
       socket.on("file:change", handleFileChange);
       socket.on("file:unlink", handleFileUnlink);
+      socket.on("file:chunk", handleFileChunk);
       socket.on("folder:add", handleFolderAdd);
       socket.on("folder:unlink", handleFolderUnlink);
       socket.on("folder:add:bulk", handleAddFolderBulk);
@@ -567,6 +608,7 @@ const FileTree = React.memo(
         socket.off("file:add", handleFileAdd);
         socket.off("file:change", handleFileChange);
         socket.off("file:unlink", handleFileUnlink);
+        socket.off("file:chunk", handleFileChunk);
         socket.off("folder:add", handleFolderAdd);
         socket.off("folder:unlink", handleFolderUnlink);
         socket.off("folder:add:bulk", handleAddFolderBulk);
@@ -582,6 +624,7 @@ const FileTree = React.memo(
       nodeExpandedState,
       startPath,
       activeEditorId,
+      fileFetchStatus,
     ]);
 
     // This function is a bit confusing.
@@ -717,11 +760,7 @@ const FileTree = React.memo(
             // Load content of files
             try {
               if (node.path.includes("node_modules")) {
-                loadFilesOfNodeModulesFolder(
-                  node,
-                  fileFetchStatus,
-                  socket?.io.opts.host!
-                );
+                loadFilesOfNodeModulesFolder(node, fileFetchStatus, socket);
               } else {
                 loadFilesOfFolder(node, fileFetchStatus);
               }
@@ -1132,11 +1171,7 @@ const FileTree = React.memo(
               nodeExpandedStateCopy[nodePath] = false;
             }
 
-            loadFilesOfNodeModulesFolder(
-              parentNode,
-              fileFetchStatus,
-              socket?.io.opts.host!
-            );
+            loadFilesOfNodeModulesFolder(parentNode, fileFetchStatus, socket);
             setFileTree(fileTreeCopy);
             const {
               flattenedTree: newFlattenedTree,

@@ -3,27 +3,43 @@
 @tailwind utilities;
 
 :root {
-  color-scheme: light dark;
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  font-family: "IBM Plex Sans", sans-serif, "system-ui";
+    color-scheme: light dark;
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-family: "IBM Plex Sans", sans-serif, "system-ui";
+}
+body.dialog-open {
+    pointer-events: none;
+}
+body.dialog-open::before {
+    content: "";
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 5;
+    background: rgba(0, 0, 0, 0.4);
+}
+button:disabled {
+    cursor: not-allowed !important;
 }
 /* .filetab {
-  scrollbar-width: none; 
+  scrollbar-width: none;
 }
 
 .filetab::-webkit-scrollbar {
-  display: none; 
+  display: none;
 }
 
 .filetab:hover {
-  scrollbar-width: thin; 
+  scrollbar-width: thin;
 }
 
 .filetab:hover::-webkit-scrollbar {
-  display: block; 
+  display: block;
 }
 
 .filetab::-webkit-scrollbar {
@@ -31,8 +47,8 @@
 }
 
 .filetab::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.5); 
-  border-radius: 4px; 
+  background: rgba(0, 0, 0, 0.5);
+  border-radius: 4px;
 }  */
 /* .folder-container .actions-container {
   opacity: 0;

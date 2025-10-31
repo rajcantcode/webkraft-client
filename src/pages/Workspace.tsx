@@ -104,6 +104,7 @@ const Workspace = () => {
     // @ts-ignore
     host: socketLink,
   });
+  const isSocketAssignedRef = useRef(socket !== null);
   const navigate = useNavigate();
   const workspaceContainerRef = useRef<HTMLDivElement | null>(null);
   const modalRef = useRef<HTMLDialogElement>(null);
@@ -228,6 +229,8 @@ const Workspace = () => {
   }, [showSidebar]);
   useEffect(() => {
     if (!socket) return;
+
+    isSocketAssignedRef.current = true;
 
     const handleReady = async (data: { fileStructure: TreeFolderNode }) => {
       setFileStructure([data.fileStructure]);
@@ -381,14 +384,13 @@ const Workspace = () => {
     }
 
     return () => {
-      if (!socket) {
+      if (!isSocketAssignedRef.current) {
         // if socket is connection is not yet initialized, then we can just directly make stopWorkspace request, as socket connection not being intialized implies that the container orchestration has not yet happened and we don't really need to care about backing up files of the workspace, so we can directly just call stopWorkspaceRequest
         stopWorkspaceRequest(useWorkspaceStore.getState().name);
+      } else {
+        // emitStopWorkspaceToSocket(useWorkspaceStore.getState().name);
+        emitStopWorkspaceToSocketRef.current(useWorkspaceStore.getState().name);
       }
-      console.log("calling emitStopWOrkspaceTOSocket from useEffect cleanup");
-
-      // emitStopWorkspaceToSocket(useWorkspaceStore.getState().name);
-      emitStopWorkspaceToSocketRef.current(useWorkspaceStore.getState().name);
 
       controller.abort();
       // stopWorkspaceRequest(workspaceName);

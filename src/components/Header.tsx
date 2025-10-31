@@ -17,7 +17,7 @@ const Header = () => {
           <p>WebKraft</p>
         </Link>
       </div>
-      <div className="flex gap-2 mr-1">
+      <div className="flex items-center gap-2 mr-1">
         {workspaceName ? (
           <TooltipWrapper title="exit workspace">
             <Button

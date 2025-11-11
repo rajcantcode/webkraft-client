@@ -16,7 +16,7 @@ import {
   ResizablePanel,
   ResizablePanelGroup,
 } from "../components/ui/Resizable";
-import { useUserStore, useWorkspaceStore } from "../store";
+import { useGitStore, useUserStore, useWorkspaceStore } from "../store";
 import {
   loadFilesOfFolder,
   loadWorkspace,
@@ -34,11 +34,12 @@ import TerminalContainer from "../components/TerminalContainer";
 import { SidebarNav } from "../components/SidebarNav";
 import { SideBar } from "../types/sidebar";
 import { ProjectSearch } from "../components/ProjectSearch";
-import { Vcs } from "../components/Vcs";
+import Vcs from "../components/Vcs";
 import { WorkspaceSettings } from "../components/WorkspaceSettings";
 import { ImperativePanelHandle } from "react-resizable-panels";
 import FileTreeWrapper from "../components/FileTree";
 import LoadingSpinner from "../components/ui/LoadingSpinner";
+import { GitRepoInfo } from "../types/git";
 
 function useSocketConnection(
   socketLink: string | null,
@@ -82,6 +83,7 @@ const Workspace = () => {
     (state) => state.setShouldBeginExitWorkspaceProcess
   );
   const [fileStructureReceived, setFileStructureReceived] = useState(false);
+  const [gitInitInfoReceived, setGitInitInfoReceived] = useState(false);
   const [terminalContainerSize, setTerminalContainerSize] = useState(25);
   // const socketRef = useRef<Socket | null>(null);
   const [socketLink, setSocketLink] = useState<string | null>(null);
@@ -126,14 +128,15 @@ const Workspace = () => {
 
   const fileFetchStatus = useRef<{ [key: string]: boolean }>({});
 
-  const { isFetching: verificationPending, error } = useQuery({
-    queryKey: ["auth"],
-    queryFn: verifyUser,
-    refetchOnMount: false,
-    refetchOnWindowFocus: false,
-    enabled: !username || !email,
-    retry: false,
-  });
+  const { isFetching: verificationPending, error: verificationError } =
+    useQuery({
+      queryKey: ["auth"],
+      queryFn: verifyUser,
+      refetchOnMount: false,
+      refetchOnWindowFocus: false,
+      enabled: !username || !email,
+      retry: false,
+    });
 
   const request = useMemo(
     () =>
@@ -154,6 +157,7 @@ const Workspace = () => {
     mutate: loadWorkspaceRequest,
     isPending: workspaceLoading,
     isSuccess: workspaceLoaded,
+    error: workspaceLoadError,
   } = useMutation({
     mutationFn: loadWorkspace,
     onSuccess: async (data) => {
@@ -243,10 +247,23 @@ const Workspace = () => {
       );
     };
 
-    socket.on("ready", handleReady);
+    const handleGitInitInfo = (data: {
+      isGitRepo: boolean;
+      repoInfo: GitRepoInfo | null;
+    }) => {
+      setGitInitInfoReceived(true);
+      if (!data.isGitRepo && !data.repoInfo) {
+        useGitStore.getState().setGitData(false, null);
+      } else {
+        useGitStore.getState().setGitData(true, data.repoInfo);
+      }
+    };
 
+    socket.on("ready", handleReady);
+    socket.on("git:init-info", handleGitInitInfo);
     return () => {
       socket.off("ready", handleReady);
+      socket.off("git:init-info", handleGitInitInfo);
     };
   }, [socket, baseLink, policy, setFileStructure]);
 
@@ -450,13 +467,18 @@ const Workspace = () => {
   if (verificationPending) {
     return <div>Verifying user, please wait</div>;
   }
-  if (workspaceLoading) {
-    return <div>Loading workspace, please wait</div>;
-  }
-  if (error) {
+  if (verificationError) {
     return <div>Error verifying user</div>;
   }
-  if (workspaceLoaded && fileStructureReceived) {
+  if (workspaceLoadError) {
+    return (
+      <div>There was an error loading workspace, please try again later</div>
+    );
+  }
+  if (workspaceLoading || !fileStructureReceived || !gitInitInfoReceived) {
+    return <div>Loading workspace, please wait</div>;
+  }
+  if (workspaceLoaded && fileStructureReceived && gitInitInfoReceived) {
     const editorSize = 100 / editorIds.length;
     return (
       <>
@@ -563,7 +585,11 @@ const Workspace = () => {
                 isVisible={sidebarNavState.search}
                 socket={socket}
               />
-              <Vcs className={`${sidebarNavState.vcs ? "flex" : "hidden"}`} />
+              <Vcs
+                className={`${sidebarNavState.vcs ? "flex" : "hidden"}`}
+                socket={socket}
+                isVisible={sidebarNavState.vcs}
+              />
               <WorkspaceSettings
                 className={`${sidebarNavState.settings ? "block" : "hidden"}`}
               />

@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { TreeFileNode, TreeFolderNode } from "./constants";
 import zukeeper from "zukeeper";
 import { devtools } from "zustand/middleware";
+import { GitRepoInfo } from "./types/git";
 
 type UserStore = {
   email: string;
@@ -108,11 +109,29 @@ type WorkspaceStore = {
   ) => void;
 };
 
+type GitStore = {
+  isGitRepo: boolean;
+  repoInfo: GitRepoInfo | null;
+  setGitData: (isGitRepo: boolean, repoInfo: GitRepoInfo | null) => void;
+  setRepoInfo: (repoInfo: GitRepoInfo | null) => void;
+};
+
 export const useUserStore = create<UserStore>((set) => ({
   email: "",
   username: "",
   setUserData: (email, username) => set({ email, username }),
 }));
+
+export const useGitStore = create<GitStore>(
+  //@ts-ignore
+  devtools((set) => ({
+    isGitRepo: false,
+    repoInfo: null,
+    setGitData: (isGitRepo, repoInfo) =>
+      set({ isGitRepo, repoInfo }, undefined, "setGitData"),
+    setRepoInfo: (repoInfo) => set({ repoInfo }, undefined, "setRepoInfo"),
+  }))
+);
 
 export const useWorkspaceStore = create<WorkspaceStore>(
   // @ts-ignore

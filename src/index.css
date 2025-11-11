@@ -3,28 +3,34 @@
 @tailwind utilities;
 
 :root {
-    color-scheme: light dark;
-    font-synthesis: none;
-    text-rendering: optimizeLegibility;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-    font-family: "IBM Plex Sans", sans-serif, "system-ui";
+  color-scheme: light dark;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-family: "IBM Plex Sans", sans-serif, "system-ui";
+}
+* {
+  box-sizing: border-box;
 }
 body.dialog-open {
-    pointer-events: none;
+  pointer-events: none;
 }
 body.dialog-open::before {
-    content: "";
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    z-index: 5;
-    background: rgba(0, 0, 0, 0.4);
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 5;
+  background: rgba(0, 0, 0, 0.4);
 }
 button:disabled {
-    cursor: not-allowed !important;
+  cursor: not-allowed !important;
+}
+span[data-slot="select-value"] {
+  width: 100% !important;
 }
 /* .filetab {
   scrollbar-width: none;

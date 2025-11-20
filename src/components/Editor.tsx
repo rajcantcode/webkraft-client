@@ -1164,15 +1164,34 @@ const Editor = ({
           moveToOffset={moveToOffset}
           breadcrumbTree={symbolsRef.current[currSelectedFilePath.path]}
         />
-        <button
-          onClick={() =>
-            editorRef?.current?.getAction("editor.action.formatDocument")?.run()
-          }
-          className="text-[#868C96] hover:text-[#F5F9FC] flex items-center gap-1 group bg-[#1B2333] text-xs h-[98%] p-1 hover:bg-[#3C445C] rounded-md"
-        >
-          <FormatSVG className="group-hover:fill-[#F5F9FC]" />
-          <span className="">Format</span>
-        </button>
+        {currSelectedFilePath.type === "file" ? (
+          <button
+            onClick={() => {
+              const editor = editorRef.current;
+              // Type guard: check if 'modified' exists and has 'getAction'
+              if (
+                editor &&
+                "modified" in editor &&
+                typeof (editor as any).modified?.getAction === "function"
+              ) {
+                (editor as any).modified
+                  .getAction("editor.action.formatDocument")
+                  ?.run();
+              } else if (
+                editor &&
+                typeof (editor as any).getAction === "function"
+              ) {
+                (editor as any)
+                  .getAction("editor.action.formatDocument")
+                  ?.run();
+              }
+            }}
+            className="text-[#868C96] hover:text-[#F5F9FC] flex items-center gap-1 group bg-[#1B2333] text-xs h-[98%] p-1 hover:bg-[#3C445C] rounded-md"
+          >
+            <FormatSVG className="group-hover:fill-[#F5F9FC]" />
+            <span className="">Format</span>
+          </button>
+        ) : null}
       </div>
 
       {currSelectedChange && currSelectedChange.index === "M" ? (
@@ -1239,10 +1258,6 @@ const Editor = ({
             const modifiedModel = editor.getModel()?.modified;
             if (modifiedModel) {
               modifiedModel.onDidChangeContent(() => {
-                console.log(
-                  "calling handleFileEdit from DiffEditor for value - ",
-                  modifiedModel.getValue()
-                );
                 debouncedFileEditRef.current(
                   modifiedModel.getValue(),
                   undefined,

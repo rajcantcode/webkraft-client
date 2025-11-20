@@ -30,15 +30,51 @@ export type RenamePathObj = {
 };
 
 export type FileTabs = {
-  [editorId: string]: string[];
+  [editorId: string]: Array<
+    | {
+        type: "file";
+        path: string;
+      }
+    | {
+        type: "change";
+        path: string;
+        changeType: "staged" | "unstaged";
+        index: "A" | "M" | "U" | "D";
+      }
+  >;
 };
 
 export type LastSelectedFilePaths = {
-  [editorId: string]: string[];
+  [editorId: string]: Array<
+    | {
+        type: "file";
+        path: string;
+      }
+    | {
+        type: "change";
+        path: string;
+        changeType: "staged" | "unstaged";
+        index: "A" | "M" | "U" | "D";
+      }
+  >;
 };
 
+// export type SelectedFilePath = {
+//   [editorId: string]: string;
+// };
+
 export type SelectedFilePath = {
-  [editorId: string]: string;
+  [editorId: string]:
+    | {
+        type: "file";
+        path: string;
+      }
+    | {
+        type: "change";
+        path: string;
+        changeType: "staged" | "unstaged";
+        index: "A" | "M" | "U" | "D";
+      };
 };
 
 type WorkspaceStore = {
@@ -124,13 +160,16 @@ export const useUserStore = create<UserStore>((set) => ({
 
 export const useGitStore = create<GitStore>(
   //@ts-ignore
-  devtools((set) => ({
-    isGitRepo: false,
-    repoInfo: null,
-    setGitData: (isGitRepo, repoInfo) =>
-      set({ isGitRepo, repoInfo }, undefined, "setGitData"),
-    setRepoInfo: (repoInfo) => set({ repoInfo }, undefined, "setRepoInfo"),
-  }))
+  devtools(
+    (set) => ({
+      isGitRepo: false,
+      repoInfo: null,
+      setGitData: (isGitRepo, repoInfo) =>
+        set({ isGitRepo, repoInfo }, undefined, "setGitData"),
+      setRepoInfo: (repoInfo) => set({ repoInfo }, undefined, "setRepoInfo"),
+    }),
+    { name: "gitStore", trace: true }
+  )
 );
 
 export const useWorkspaceStore = create<WorkspaceStore>(
@@ -275,6 +314,6 @@ export const useWorkspaceStore = create<WorkspaceStore>(
           "setShouldBeginExitWorkspaceProcess"
         ),
     }),
-    { trace: true }
+    { name: "workspaceStore", trace: true }
   )
 );

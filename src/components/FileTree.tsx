@@ -195,7 +195,7 @@ const FileTree = React.memo(
     const setOpenPathAtTerminal = useWorkspaceStore(
       (state) => state.setOpenPathAtTerminal
     );
-    const [currSelectedFilePath, setCurrSelectedFilePath] = useState<string>(
+    const [currSelectedFilePath, setCurrSelectedFilePath] = useState(
       selectedFilePath[activeEditorId]
     );
     const isNodeModulesChildrenReceived = useRef<{ [path: string]: boolean }>(
@@ -282,7 +282,7 @@ const FileTree = React.memo(
     useEffect(() => {
       // This effect here is to expand the nodes which are not expanded when the selectedFilePath changes, and to scroll to that path in the fileTree if it is not visible
       if (!currSelectedFilePath || startPath) return;
-      const splitPaths = currSelectedFilePath.split("/");
+      const splitPaths = currSelectedFilePath.path.split("/");
       const pathsArray: string[] = [];
       if (!expandedNodesRef.current[splitPaths[0]]) {
         pathsArray.push(splitPaths[0]);
@@ -296,10 +296,10 @@ const FileTree = React.memo(
       }
       if (pathsArray.length !== 0) {
         expandNode(pathsArray);
-        setPathToScroll(currSelectedFilePath);
+        setPathToScroll(currSelectedFilePath.path);
       } else {
-        if (!visibleNodesRef.current.has(currSelectedFilePath)) {
-          scrollToPath(currSelectedFilePath);
+        if (!visibleNodesRef.current.has(currSelectedFilePath.path)) {
+          scrollToPath(currSelectedFilePath.path);
         }
       }
     }, [currSelectedFilePath, startPath]);
@@ -391,7 +391,7 @@ const FileTree = React.memo(
           delete newFilesContent[path];
           return newFilesContent;
         });
-        deleteFilePathsInFileTabBar(path, undefined);
+        deleteFilePathsInFileTabBar("file", path, undefined);
       };
 
       const handleFolderAdd = (data: { path: string }) => {
@@ -459,7 +459,7 @@ const FileTree = React.memo(
           null
         );
         setFilesContent({ ...filesContent });
-        deleteFilePathsInFileTabBar(undefined, deletedPaths);
+        deleteFilePathsInFileTabBar("file", undefined, deletedPaths);
       };
 
       const handleAddFolderBulk = (folderPaths: string[]) => {
@@ -537,11 +537,13 @@ const FileTree = React.memo(
               if (node.type === "file") {
                 delete filesContent[node.path];
                 fileTabsCopy.splice(
-                  fileTabs[activeEditorId].indexOf(node.path),
+                  fileTabs[activeEditorId].findIndex(
+                    (tab) => tab.path === node.path && tab.type === "file"
+                  ),
                   1
                 );
                 lastSelectedFilePathsCopy = lastSelectedFilePathsCopy.filter(
-                  (path) => path !== node.path
+                  (path) => path.path !== node.path
                 );
               }
             });
@@ -1248,7 +1250,7 @@ const FileTree = React.memo(
             delete newFilesContent[path];
             return newFilesContent;
           });
-          deleteFilePathsInFileTabBar(path, undefined);
+          deleteFilePathsInFileTabBar("file", path, undefined);
         } else {
           // Recursively add all the children paths to the deletedPaths array
           // Delete all the paths of children which are files, from the filesContent object
@@ -1261,7 +1263,7 @@ const FileTree = React.memo(
           );
           // setDeletedPaths(deletedPaths);
           setFilesContent({ ...filesContent });
-          deleteFilePathsInFileTabBar(undefined, deletedPaths);
+          deleteFilePathsInFileTabBar("file", undefined, deletedPaths);
         }
 
         // filter out the node to be deleted

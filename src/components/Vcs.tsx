@@ -1,6 +1,11 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { cn, getFileIcon } from "../lib/utils";
-import { useGitStore, useUserStore } from "../store";
+import {
+  cn,
+  deleteFilePathsInFileTabBar,
+  getFileIcon,
+  updateFilePathsInFileTabBar,
+} from "../lib/utils";
+import { useGitStore, useUserStore, useWorkspaceStore } from "../store";
 import { Input } from "./ui/Input";
 import { ChevronDown, ChevronRight, Minus, Plus } from "lucide-react";
 import { TooltipWrapper } from "./ui/ToolTip";
@@ -19,6 +24,7 @@ import {
 import { Socket } from "socket.io-client";
 import { GitRepoInfo } from "../types/git";
 import LoadingSpinner from "./ui/LoadingSpinner";
+import { nanoid } from "nanoid";
 
 const Vcs = ({
   className,
@@ -30,6 +36,10 @@ const Vcs = ({
   isVisible: boolean;
 }) => {
   const { isGitRepo, repoInfo, setRepoInfo, setGitData } = useGitStore();
+  const activeEditorId = useWorkspaceStore((state) => state.activeEditorId);
+  const setActiveEditorId = useWorkspaceStore(
+    (state) => state.setActiveEditorId
+  );
   const [collapseState, setCollapseState] = useState({
     repos: false,
     changes: false,
@@ -175,6 +185,49 @@ const Vcs = ({
       repoInfo: GitRepoInfo;
     }) => {
       setGitData(isGitRepo, repoInfo);
+      const fileTabs = useWorkspaceStore.getState().fileTabs;
+      const stagedFileTabs = new Set<string>();
+      const unstagedFileTabs = new Set<string>();
+      // get file tabs which are of type 'change'
+      Object.keys(fileTabs).forEach((editorId) => {
+        const fileTab = fileTabs[editorId];
+        fileTab.forEach((tab) => {
+          if (tab.type === "change" && tab.changeType === "staged") {
+            stagedFileTabs.add(tab.path);
+          } else if (tab.type === "change" && tab.changeType === "unstaged") {
+            unstagedFileTabs.add(tab.path);
+          }
+        });
+      });
+      const tabsToClose: string[] = [];
+      stagedFileTabs.forEach((tab) => {
+        const isStillStaged = repoInfo.changes.staged.find(
+          (change) => change.path === tab
+        );
+        if (!isStillStaged) {
+          tabsToClose.push(tab);
+        }
+      });
+      if (tabsToClose.length > 0) {
+        deleteFilePathsInFileTabBar("change", undefined, tabsToClose, "staged");
+        tabsToClose.length = 0;
+      }
+      unstagedFileTabs.forEach((tab) => {
+        const isStillUnstaged = repoInfo.changes.unstaged.find(
+          (change) => change.path === tab
+        );
+        if (!isStillUnstaged) {
+          tabsToClose.push(tab);
+        }
+      });
+      if (tabsToClose.length > 0) {
+        deleteFilePathsInFileTabBar(
+          "change",
+          undefined,
+          tabsToClose,
+          "unstaged"
+        );
+      }
     };
     socket.on("git:info", handleGitInfo);
 
@@ -252,12 +305,7 @@ const Vcs = ({
   );
 
   useEffect(() => {
-    if (
-      !containerRef.current ||
-      !repoInfo ||
-      !reposContainerRef.current ||
-      !changesContainerRef.current
-    ) {
+    if (!containerRef.current || !repoInfo || !reposContainerRef.current) {
       return;
     }
     console.log("container height is - ", containerRef.current.clientHeight);
@@ -307,27 +355,22 @@ const Vcs = ({
   const stagedChangesContainerRef = useRef<HTMLDivElement>(null);
   const unstagedChangesContainerRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    if (
-      !isVisible ||
-      !repoInfo ||
-      !stagedChangesContainerRef.current ||
-      !unstagedChangesContainerRef.current ||
-      !changesContainerRef.current
-    )
-      return;
+    if (!isVisible || !repoInfo || !changesContainerRef.current) return;
     if (
       repoInfo.changes.staged.length > 0 &&
-      repoInfo.changes.unstaged.length === 0
+      repoInfo.changes.unstaged.length === 0 &&
+      stagedChangesContainerRef.current
     ) {
-      stagedChangesContainerRef.current.style.minHeight = "100%";
+      // stagedChangesContainerRef.current.style.minHeight = "100%";
       stagedChangesContainerRef.current.style.maxHeight = "100%";
       return;
     }
     if (
       repoInfo.changes.unstaged.length > 0 &&
-      repoInfo.changes.staged.length === 0
+      repoInfo.changes.staged.length === 0 &&
+      unstagedChangesContainerRef.current
     ) {
-      unstagedChangesContainerRef.current.style.minHeight = "100%";
+      // unstagedChangesContainerRef.current.style.minHeight = "100%";
       unstagedChangesContainerRef.current.style.maxHeight = "100%";
       return;
     }
@@ -366,6 +409,36 @@ const Vcs = ({
     }
   }, [isVisible, repoInfo, setReposAndChangesHeight]);
 
+  const setSelectedFilePath = useWorkspaceStore(
+    (state) => state.setSelectedFilePath
+  );
+  const setEditorIds = useWorkspaceStore((state) => state.setEditorIds);
+  const openFileInEditor = useCallback(
+    (
+      e: React.MouseEvent<HTMLDivElement, MouseEvent>,
+      path: string,
+      change: "staged" | "unstaged",
+      index: "A" | "M" | "U" | "D"
+    ) => {
+      e.stopPropagation();
+      if (activeEditorId) {
+        setSelectedFilePath((prev) => ({
+          ...prev,
+          [activeEditorId]: { path, type: "change", changeType: change, index },
+        }));
+      } else {
+        const newEditorId = nanoid(4);
+        setActiveEditorId(newEditorId);
+        setEditorIds((prev) => [...prev, newEditorId]);
+        setSelectedFilePath((prev) => ({
+          ...prev,
+          [newEditorId]: { path, type: "change", changeType: change, index },
+        }));
+      }
+    },
+    [activeEditorId, setSelectedFilePath, setActiveEditorId, setEditorIds]
+  );
+
   if (!isGitRepo || !repoInfo) {
     return (
       <div className="flex flex-col w-full h-full gap-3 p-1.5 cursor-pointer">
@@ -394,7 +467,7 @@ const Vcs = ({
             className="border border-[#959a9e] focus-visible:border-none focus-visible:border-0"
           />
           <button
-            className="w-full p-2 text-center bg-gray-800 rounded-md hover:bg-gray-700"
+            className="flex items-center justify-center w-full p-2 text-center bg-gray-800 rounded-md hover:bg-gray-700"
             onClick={handleInitializeRepository}
             disabled={loading}
           >
@@ -620,6 +693,14 @@ const Vcs = ({
                         <div
                           className="flex items-center justify-between change group hover:bg-[#1C2333] rounded-md px-1"
                           key={change.name}
+                          onClick={(e) =>
+                            openFileInEditor(
+                              e,
+                              change.path,
+                              "staged",
+                              change.index
+                            )
+                          }
                         >
                           <div className="flex items-center gap-2 LHS w-[calc(100%-34px)]">
                             <img
@@ -628,7 +709,11 @@ const Vcs = ({
                               className="w-4 h-4"
                             />
                             <div className="flex items-baseline gap-2 name-and-path w-[calc(100%-16px)]">
-                              <p className="overflow-hidden text-sm file-name text-ellipsis whitespace-nowrap">
+                              <p
+                                className={`overflow-hidden text-sm file-name text-ellipsis whitespace-nowrap ${
+                                  change.index === "D" ? "line-through" : ""
+                                }`}
+                              >
                                 {fileName}
                               </p>
                               <p className="overflow-hidden text-xs text-gray-400 relative-path text-ellipsis whitespace-nowrap">
@@ -646,7 +731,17 @@ const Vcs = ({
                                 }}
                               />
                             </TooltipWrapper>
-                            <p className="text-xs index">{change.index}</p>
+                            <p
+                              className={`text-xs index text-[${
+                                change.index === "A"
+                                  ? "#73c991"
+                                  : change.index === "M"
+                                  ? "#e2c08d"
+                                  : "#c74e39"
+                              }]`}
+                            >
+                              {change.index}
+                            </p>
                           </div>
                         </div>
                       );
@@ -718,6 +813,14 @@ const Vcs = ({
                         <div
                           className="flex items-center justify-between change group hover:bg-[#1C2333] w-full rounded-md px-1"
                           key={change.name}
+                          onClick={(e) =>
+                            openFileInEditor(
+                              e,
+                              change.path,
+                              "unstaged",
+                              change.index
+                            )
+                          }
                         >
                           <div className="flex items-center gap-2 LHS w-[calc(100%-54px)]">
                             <img
@@ -726,7 +829,11 @@ const Vcs = ({
                               alt=""
                             />
                             <div className="flex items-baseline gap-2 name-and-path w-[calc(100%-16px)]">
-                              <p className="overflow-hidden text-sm file-name text-ellipsis whitespace-nowrap">
+                              <p
+                                className={`overflow-hidden text-sm file-name text-ellipsis whitespace-nowrap ${
+                                  change.index === "D" ? "line-through" : ""
+                                }`}
+                              >
                                 {fileName}
                               </p>
                               <p className="overflow-hidden text-xs text-gray-400 relative-path text-ellipsis whitespace-nowrap">
@@ -757,7 +864,17 @@ const Vcs = ({
                                 />
                               </TooltipWrapper>
                             </div>
-                            <p className="text-xs index">{change.index}</p>
+                            <p
+                              className={`text-xs index text-[${
+                                change.index === "M"
+                                  ? "#e2c08d"
+                                  : change.index === "U"
+                                  ? "#73c991"
+                                  : "#c74e39"
+                              }]`}
+                            >
+                              {change.index}
+                            </p>
                           </div>
                         </div>
                       );

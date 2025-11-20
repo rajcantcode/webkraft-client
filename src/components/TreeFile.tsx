@@ -123,7 +123,7 @@ const TreeFile = React.memo(
           if (activeEditorId) {
             setSelectedFilePath((prev) => ({
               ...prev,
-              [activeEditorId]: node.path,
+              [activeEditorId]: { path: node.path, type: "file" },
             }));
           } else {
             const newEditorId = nanoid(4);
@@ -131,7 +131,7 @@ const TreeFile = React.memo(
             setEditorIds((prev) => [...prev, newEditorId]);
             setSelectedFilePath((prev) => ({
               ...prev,
-              [newEditorId]: node.path,
+              [newEditorId]: { path: node.path, type: "file" },
             }));
             // setFileTabs((prev) => ({
             //   ...prev,
@@ -266,7 +266,9 @@ const TreeFile = React.memo(
       >
         <div
           className={`pl-[${padLeft}px] flex items-center w-[98%] file-details group justify-between text-sm transition-opacity duration-200 ${
-            selectedFilePath[activeEditorId] === node.path ? "bg-[#2B3245]" : ""
+            selectedFilePath[activeEditorId]?.path === node.path
+              ? "bg-[#2B3245]"
+              : ""
           } rounded-md hover:bg-[#1C2333] focus:shadow-[0_0_0_2px_#0079F2] px-1 ml-0.5 h-[90%]`}
           onClick={handleFileClick}
           tabIndex={0}

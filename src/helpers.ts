@@ -120,10 +120,16 @@ export const loadFilesOfFolder = async (
   }
 };
 
+export const getFileLanguage = (fileName: string): string => {
+  const fileExtension = fileName.split(".").pop();
+  return fileExtension
+    ? editorSupportedLanguages[fileExtension] || "text"
+    : "text";
+};
 export const loadFilesOfNodeModulesFolder = async (
   folder: TreeFolderNode,
   fileFetchStatus: { [key: string]: boolean },
-  socket: Socket | null,
+  socket: Socket | null
 ) => {
   if (!socket) return;
   const fileContentObj: FileContentObj = {};
@@ -131,7 +137,7 @@ export const loadFilesOfNodeModulesFolder = async (
     useWorkspaceStore.getState();
   const files = folder.children.filter(
     (child) =>
-      child.type === "file" && currentFilesContent[child.path] === undefined,
+      child.type === "file" && currentFilesContent[child.path] === undefined
   );
   files.forEach((file, index) => {
     fileFetchStatus[file.path] = true;
@@ -140,7 +146,7 @@ export const loadFilesOfNodeModulesFolder = async (
       { path: file.path },
       (
         error: { msg: string } | null,
-        data: { content: string; end: boolean; stream: boolean } | null,
+        data: { content: string; end: boolean; stream: boolean } | null
       ) => {
         if (error) {
           console.error(error.msg);
@@ -160,14 +166,14 @@ export const loadFilesOfNodeModulesFolder = async (
         if (index === files.length - 1) {
           setFilesContent({ ...currentFilesContent, ...fileContentObj });
         }
-      },
+      }
     );
   });
 };
 export const loadFilesOfNodeModulesFolder2 = async (
   folder: TreeFolderNode,
   fileFetchStatus: { [key: string]: boolean },
-  socketLink: string,
+  socketLink: string
 ) => {
   const fileContentObj: FileContentObj = {};
   const { setFilesContent, filesContent: currentFilesContent } =

@@ -15,6 +15,7 @@ export type GitStagedChange =
       name: string;
       path: string;
       index: "A";
+      content?: string;
     }
   | {
       type: "staged";
@@ -22,6 +23,7 @@ export type GitStagedChange =
       path: string;
       index: "M";
       diff: string;
+      content: string;
     }
   | {
       type: "staged";

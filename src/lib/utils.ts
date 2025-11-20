@@ -64,18 +64,10 @@ import tailwindcss from "material-icon-theme/icons/tailwindcss.svg";
 import postcss from "material-icon-theme/icons/postcss.svg";
 import svg from "material-icon-theme/icons/svg.svg";
 import image from "material-icon-theme/icons/image.svg";
-import {
-  type ManifestConfig,
-  type IconAssociations,
-  type IconPackValue,
-  generateManifest,
-} from "material-icon-theme";
 
 import {
   FileContent,
   FileContentObj,
-  FlattenedTreeFileNode,
-  FlattenedTreeFolderNode,
   tempNodeStore,
   tempOverwriteNodeStore,
   TreeFileNode,
@@ -398,7 +390,7 @@ export const moveNodes = (
           fileContent: filesContentCopy[destNodeToDelete.path],
         };
         delete filesContentCopy[destNodeToDelete.path];
-        deleteFilePathsInFileTabBar(destNodeToDelete.path, undefined);
+        deleteFilePathsInFileTabBar("file", destNodeToDelete.path, undefined);
       } else {
         const delPaths: string[] = [];
         const deletedFileContent: FileContentObj = {};
@@ -413,7 +405,7 @@ export const moveNodes = (
           fileContent: deletedFileContent,
         };
         // deletePathsFromFilesContentObj(destNodeToDelete, filesContentCopy);
-        deleteFilePathsInFileTabBar(undefined, delPaths);
+        deleteFilePathsInFileTabBar("file", undefined, delPaths);
       }
     }
     destNode.children = destFilteredChildren;
@@ -507,7 +499,9 @@ export const updateFilePathsInFileTabBar = (
     const updatedFileTabs = Object.keys(fileTabs).reduce((acc, editorId) => {
       // acc[tab === oldPath ? newPath : tab] = fileTabs[tab];
       acc[editorId] = fileTabs[editorId].map((path) =>
-        path === oldPath ? newPath : path
+        path.path === oldPath && path.type === "file"
+          ? { path: newPath, type: "file" }
+          : { path: path.path, type: "file" }
       );
       return acc;
     }, {} as FileTabs);
@@ -521,7 +515,9 @@ export const updateFilePathsInFileTabBar = (
       lastSelectedFilePaths
     ).reduce((acc, editorId) => {
       acc[editorId] = lastSelectedFilePaths[editorId].map((path) =>
-        path === oldPath ? newPath : path
+        path.path === oldPath && path.type === "file"
+          ? { path: newPath, type: "file" }
+          : { path: path.path, type: "file" }
       );
       return acc;
     }, {} as LastSelectedFilePaths);
@@ -533,8 +529,9 @@ export const updateFilePathsInFileTabBar = (
     const updatedSelectedFilePath = Object.keys(selectedFilePath).reduce(
       (acc, editorId) => {
         acc[editorId] =
-          selectedFilePath[editorId] === oldPath
-            ? newPath
+          selectedFilePath[editorId].path === oldPath &&
+          selectedFilePath[editorId].type === "file"
+            ? { path: newPath, type: "file" }
             : selectedFilePath[editorId];
         return acc;
       },
@@ -552,7 +549,9 @@ export const updateFilePathsInFileTabBar = (
     renamePaths.forEach(({ oldPath, newPath }) => {
       updatedFileTabs = fileTabKeys.reduce((acc, editorId) => {
         acc[editorId] = updatedFileTabs[editorId].map((path) =>
-          path === oldPath ? newPath : path
+          path.path === oldPath && path.type === "file"
+            ? { path: newPath, type: "file" }
+            : { path: path.path, type: "file" }
         );
         return acc;
       }, {} as FileTabs);
@@ -560,7 +559,9 @@ export const updateFilePathsInFileTabBar = (
       updatedLastSelectedFilePaths = lastSelectedFilePathsKeys.reduce(
         (acc, editorId) => {
           acc[editorId] = updatedLastSelectedFilePaths[editorId].map((path) =>
-            path === oldPath ? newPath : path
+            path.path === oldPath && path.type === "file"
+              ? { path: newPath, type: "file" }
+              : { path: path.path, type: "file" }
           );
           return acc;
         },
@@ -569,8 +570,9 @@ export const updateFilePathsInFileTabBar = (
 
       updatedSelectedFilePath = selectedFilePathKeys.reduce((acc, editorId) => {
         acc[editorId] =
-          updatedSelectedFilePath[editorId] === oldPath
-            ? newPath
+          updatedSelectedFilePath[editorId].path === oldPath &&
+          updatedSelectedFilePath[editorId].type === "file"
+            ? { path: newPath, type: "file" }
             : updatedSelectedFilePath[editorId];
         return acc;
       }, {} as SelectedFilePath);
@@ -585,8 +587,10 @@ export const updateFilePathsInFileTabBar = (
 };
 
 export const deleteFilePathsInFileTabBar = (
+  type: "file" | "change",
   deletedPath: string | undefined,
-  deletedPaths: string[] | undefined
+  deletedPaths: string[] | undefined,
+  changeType?: "staged" | "unstaged"
 ) => {
   const {
     fileTabs,
@@ -606,7 +610,9 @@ export const deleteFilePathsInFileTabBar = (
     const editorsToKeep: string[] = [];
     let updatedLastSelectedEditorIds: string[] = [...lastSelectedEditorIds];
     const updatedFileTabs = Object.keys(fileTabs).reduce((acc, editorId) => {
-      const newTabs = fileTabs[editorId].filter((path) => path !== deletedPath);
+      const newTabs = fileTabs[editorId].filter(
+        (tab) => !(tab.path === deletedPath && tab.type === "file")
+      );
       if (newTabs.length > 0) {
         acc[editorId] = newTabs;
         editorsToKeep.push(editorId);
@@ -626,7 +632,7 @@ export const deleteFilePathsInFileTabBar = (
       // If fileTabs for that editor still exists, then only it makes sense to keep the lastSelectedFilePaths state for that editor
       if (updatedFileTabs[editorId]) {
         acc[editorId] = lastSelectedFilePaths[editorId].filter(
-          (path) => path !== deletedPath
+          (path) => !(path.path === deletedPath && path.type === "file")
         );
       }
       return acc;
@@ -639,8 +645,9 @@ export const deleteFilePathsInFileTabBar = (
         // If fileTabs for that editor still exists, then only it makes sense to keep the selectedFilePath state for that editor
         if (updatedFileTabs[editorId]) {
           acc[editorId] =
-            selectedFilePath[editorId] === deletedPath
-              ? updatedLastSelectedFilePaths[editorId].pop() || ""
+            selectedFilePath[editorId].path === deletedPath &&
+            selectedFilePath[editorId].type === "file"
+              ? updatedLastSelectedFilePaths[editorId].pop()!
               : selectedFilePath[editorId];
         }
         return acc;
@@ -665,9 +672,20 @@ export const deleteFilePathsInFileTabBar = (
     //   (tab) => !deletedPathsSet.has(tab)
     // );
     const updatedFileTabs = Object.keys(fileTabs).reduce((acc, editorId) => {
-      const newTabs = fileTabs[editorId].filter(
-        (path) => !deletedPathsSet.has(path)
-      );
+      const newTabs = fileTabs[editorId].filter((tab) => {
+        if (type === "file") {
+          return !(deletedPathsSet.has(tab.path) && tab.type === type);
+        } else {
+          if (changeType) {
+            return !(
+              deletedPathsSet.has(tab.path) &&
+              tab.type === type &&
+              tab.changeType === changeType
+            );
+          }
+          return true;
+        }
+      });
       if (newTabs.length > 0) {
         acc[editorId] = newTabs;
         editorsToKeep.push(editorId);
@@ -685,9 +703,20 @@ export const deleteFilePathsInFileTabBar = (
       lastSelectedFilePaths
     ).reduce((acc, editorId) => {
       if (updatedFileTabs[editorId]) {
-        acc[editorId] = lastSelectedFilePaths[editorId].filter(
-          (path) => !deletedPathsSet.has(path)
-        );
+        acc[editorId] = lastSelectedFilePaths[editorId].filter((path) => {
+          if (type === "file") {
+            return !(deletedPathsSet.has(path.path) && path.type === type);
+          } else {
+            if (changeType) {
+              return !(
+                deletedPathsSet.has(path.path) &&
+                path.type === type &&
+                path.changeType === changeType
+              );
+            }
+            return true;
+          }
+        });
       }
       return acc;
     }, {} as LastSelectedFilePaths);
@@ -697,9 +726,22 @@ export const deleteFilePathsInFileTabBar = (
     const updatedSelectedFilePath = Object.keys(selectedFilePath).reduce(
       (acc, editorId) => {
         if (updatedFileTabs[editorId]) {
-          acc[editorId] = deletedPathsSet.has(selectedFilePath[editorId])
-            ? updatedLastSelectedFilePaths[editorId].pop() || ""
-            : selectedFilePath[editorId];
+          // acc[editorId] =
+          //   deletedPathsSet.has(selectedFilePath[editorId].path) &&
+          //   selectedFilePath[editorId].type === type
+          //     ? updatedLastSelectedFilePaths[editorId].pop()!
+          //     : selectedFilePath[editorId];
+          acc[editorId] =
+            type === "file"
+              ? deletedPathsSet.has(selectedFilePath[editorId].path) &&
+                selectedFilePath[editorId].type === type
+                ? updatedLastSelectedFilePaths[editorId].pop()!
+                : selectedFilePath[editorId]
+              : deletedPathsSet.has(selectedFilePath[editorId].path) &&
+                selectedFilePath[editorId].type === type &&
+                selectedFilePath[editorId].changeType === changeType
+              ? updatedLastSelectedFilePaths[editorId].pop()!
+              : selectedFilePath[editorId];
         }
         return acc;
       },

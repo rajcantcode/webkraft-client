@@ -112,14 +112,17 @@ const Results = React.memo(
           setSearchPosition,
         } = useWorkspaceStore.getState();
         if (activeEditorId) {
-          setSelectedFilePath((prev) => ({ ...prev, [activeEditorId]: path }));
+          setSelectedFilePath((prev) => ({
+            ...prev,
+            [activeEditorId]: { path, type: "file" },
+          }));
         } else {
           const newEditorId = nanoid(4);
           setActiveEditorId(newEditorId);
           setEditorIds((prev) => [...prev, newEditorId]);
           setSelectedFilePath((prev) => ({
             ...prev,
-            [newEditorId]: path,
+            [newEditorId]: { path, type: "file" },
           }));
         }
         setSearchPosition({ lineNumber, column, matchIndex });

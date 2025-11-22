@@ -67,9 +67,9 @@ const Workspace = () => {
   const username = useUserStore((state) => state.username);
   const email = useUserStore((state) => state.email);
   const workspaceName = useWorkspaceStore((state) => state.name);
-  const workspaceLink = useWorkspaceStore((state) => state.link);
-  const baseLink = useWorkspaceStore((state) => state.baseLink);
-  const policy = useWorkspaceStore((state) => state.policy);
+  const s3Creds = useWorkspaceStore((state) => state.s3Creds);
+  // const baseLink = useWorkspaceStore((state) => state.baseLink);
+  // const policy = useWorkspaceStore((state) => state.policy);
   const setWorkspaceData = useWorkspaceStore((state) => state.setWorkspaceData);
   const clearWorkspaceData = useWorkspaceStore(
     (state) => state.clearWorkspaceData
@@ -168,29 +168,29 @@ const Workspace = () => {
       let baseLinkCopy: string;
       let policyCopy: string;
       const socketLink = data.socketLink;
-      if (!workspaceLink) {
-        const linkSplit = data.workspaceLink!.split("?");
-        baseLinkCopy = linkSplit[0]
-          .slice(0, -2)
-          .split("/")
-          .slice(0, -2)
-          .join("/");
-        policyCopy = linkSplit[1];
+      if (!s3Creds) {
+        // const linkSplit = data.workspaceLink!.split("?");
+        // baseLinkCopy = linkSplit[0]
+        //   .slice(0, -2)
+        //   .split("/")
+        //   .slice(0, -2)
+        //   .join("/");
+        // policyCopy = linkSplit[1];
         setWorkspaceData(
           pathWorkspaceName!,
-          data.workspaceLink!,
-          baseLinkCopy,
-          policyCopy,
+          data.s3Creds!,
+          // baseLinkCopy,
+          // policyCopy,
           null
         );
-        workspaceLinkCopy = data.workspaceLink!;
+        // workspaceLinkCopy = data.workspaceLink!;
         setSocketLink(socketLink);
         // fileTreeCopy = data.fileTree;
       } else {
-        workspaceLinkCopy = workspaceLink;
+        // workspaceLinkCopy = workspaceLink;
         // fileTreeCopy = fileStructure![0]!;
-        baseLinkCopy = baseLink;
-        policyCopy = policy;
+        // baseLinkCopy = baseLink;
+        // policyCopy = policy;
         setSocketLink(socketLink);
       }
       if (!data.isCreator) {
@@ -242,8 +242,7 @@ const Workspace = () => {
       await loadFilesOfFolder(
         data.fileStructure,
         fileFetchStatus.current,
-        baseLink,
-        policy
+        s3Creds
       );
     };
 
@@ -265,7 +264,7 @@ const Workspace = () => {
       socket.off("ready", handleReady);
       socket.off("git:init-info", handleGitInitInfo);
     };
-  }, [socket, baseLink, policy, setFileStructure]);
+  }, [socket, s3Creds, setFileStructure]);
 
   const { mutate: stopWorkspaceRequest } = useMutation({
     mutationFn: async (workspaceName: string) => {
@@ -381,22 +380,22 @@ const Workspace = () => {
     }
     const controller = new AbortController();
     const signal = controller.signal;
-    const { link: workspaceLink, name: workspaceName } =
-      useWorkspaceStore.getState();
-    if (!workspaceLink) {
+    const { s3Creds, name: workspaceName } = useWorkspaceStore.getState();
+    if (!s3Creds) {
       loadWorkspaceRequest({
         signal,
         creator: creator!,
         workspaceName: pathWorkspaceName!,
+        isS3Creds: false,
       });
     }
 
-    if (workspaceLink) {
+    if (s3Creds) {
       loadWorkspaceRequest({
         signal,
         creator: creator!,
         workspaceName: workspaceName,
-        workspaceLink,
+        isS3Creds: true,
       });
     }
 

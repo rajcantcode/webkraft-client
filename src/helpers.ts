@@ -8,14 +8,18 @@ import {
 } from "./constants";
 import { useUserStore, useWorkspaceStore } from "./store";
 import { Socket } from "socket.io-client";
-
+import {
+  GetObjectCommand,
+  S3Client,
+  SessionCredentials,
+} from "@aws-sdk/client-s3";
 interface Data {
   email: string;
   username: string;
 }
 
 interface LaodWorkspaceResponse {
-  workspaceLink?: string;
+  s3Creds: SessionCredentials | null | undefined;
   socketLink: string;
   isCreator: boolean;
 }
@@ -39,13 +43,12 @@ export const loadWorkspace = async (params: {
   signal: AbortSignal;
   creator: string;
   workspaceName: string;
-  workspaceLink?: string;
+  isS3Creds: boolean;
 }) => {
   try {
-    const { creator, workspaceName, workspaceLink, signal } = params;
-    const body = workspaceLink
-      ? { creator, workspaceName, workspaceLink }
-      : { creator, workspaceName };
+    const { creator, workspaceName, isS3Creds, signal } = params;
+    const body = { creator, workspaceName, isS3Creds };
+
     const { data } = await axios.post(`${baseUrl}/workspace/load`, body, {
       withCredentials: true,
       signal,
@@ -73,49 +76,93 @@ export const stopWorkspace = async (workspaceName: string) => {
   }
 };
 
+export const getS3Creds = async () => {
+  try {
+    const workspaceName = useWorkspaceStore.getState().name;
+    const { data } = await axios.get(
+      `${baseUrl}/workspace/s3creds/${workspaceName}`,
+      {
+        withCredentials: true,
+      }
+    );
+    return data as SessionCredentials;
+  } catch (error) {
+    console.error(error);
+  }
+};
 export const loadFilesOfFolder = async (
   folder: TreeFolderNode,
   fileFetchStatus: { [key: string]: boolean },
-  baseUrl?: string,
-  policy?: string
+  s3Creds?: SessionCredentials | null
 ) => {
   const fileContentObj: FileContentObj = {};
   const {
     setFilesContent,
     filesContent: currentFilesContent,
-    baseLink,
-    policy: baseLinkPolicy,
+    s3Creds: s3CredsFromStore,
+    setS3Creds,
   } = useWorkspaceStore.getState();
-  baseUrl = baseUrl || baseLink;
-  policy = policy || baseLinkPolicy;
+  const username = useUserStore.getState().username;
+  s3Creds = s3Creds || s3CredsFromStore;
+  if (
+    !s3Creds ||
+    !s3Creds.AccessKeyId ||
+    !s3Creds.SecretAccessKey ||
+    !s3Creds.SessionToken
+  )
+    return;
+
+  const files = folder.children.filter(
+    (child) =>
+      child.type === "file" && currentFilesContent[child.path] === undefined
+  );
   try {
-    const files = folder.children.filter(
-      (child) =>
-        child.type === "file" && currentFilesContent[child.path] === undefined
-    );
-    const fetchPromises = files.map(async (file) => {
+    const s3Client = new S3Client({
+      region: import.meta.env.VITE_S3_REGION!,
+      credentials: {
+        accessKeyId: s3Creds.AccessKeyId,
+        secretAccessKey: s3Creds.SecretAccessKey,
+        sessionToken: s3Creds.SessionToken,
+      },
+    });
+
+    const getCommands = files.map((file) => {
       fileFetchStatus[file.path] = true;
-      return axios.get(`${baseUrl}/${file.path}?${policy}`).then((response) => {
-        let data = response.data;
-        if (typeof data === "object") {
-          data = JSON.stringify(data, null, 2);
+      const command = new GetObjectCommand({
+        Bucket: import.meta.env.VITE_BUCKET!,
+        Key: `users/${username}/${file.path}`,
+      });
+      return s3Client.send(command).then(async (response) => {
+        const data = await response.Body?.transformToString();
+        if (data) {
+          const fileExtension = file.name.split(".").pop();
+          fileContentObj[file.path] = {
+            name: file.name,
+            content: data,
+            language: fileExtension
+              ? editorSupportedLanguages[fileExtension] || "text"
+              : "text",
+          };
         }
-        const fileExtension = file.name.split(".").pop();
-        fileContentObj[file.path] = {
-          name: file.name,
-          content: data,
-          language: fileExtension
-            ? editorSupportedLanguages[fileExtension] || "text"
-            : "text",
-        };
         fileFetchStatus[file.path] = false;
-        return data;
       });
     });
-    const filesContent = await Promise.all(fetchPromises);
+    await Promise.all(getCommands);
     setFilesContent({ ...currentFilesContent, ...fileContentObj });
-    return filesContent;
+    // const putCommands = ;
   } catch (error) {
+    files.forEach((file) => {
+      fileFetchStatus[file.path] = false;
+    });
+    if (error.name === "ExpiredToken") {
+      console.log("S3 credentials expired");
+      const newS3Creds = await getS3Creds();
+      if (newS3Creds) {
+        setS3Creds(newS3Creds);
+        await loadFilesOfFolder(folder, fileFetchStatus, newS3Creds);
+      }
+    }
+    console.error(error);
     throw error;
   }
 };
@@ -208,6 +255,7 @@ export const loadFilesOfNodeModulesFolder2 = async (
     setFilesContent({ ...currentFilesContent, ...fileContentObj });
     return filesContent;
   } catch (error) {
+    console.error(error);
     throw error;
   }
 };
@@ -217,34 +265,60 @@ export const loadFile = async (
   name: string,
   fileFetchStatus: { [key: string]: boolean }
 ) => {
-  const { setFilesContent, filesContent, baseLink, policy } =
+  const { setFilesContent, filesContent, s3Creds, setS3Creds } =
     useWorkspaceStore.getState();
+  const username = useUserStore.getState().username;
+  if (
+    !s3Creds ||
+    !s3Creds.AccessKeyId ||
+    !s3Creds.SecretAccessKey ||
+    !s3Creds.SessionToken
+  )
+    return;
   try {
     fileFetchStatus[path] = true;
-    const response = await axios.get(`${baseLink}/${path}?${policy}`);
-    const data =
-      typeof response.data === "object"
-        ? JSON.stringify(response.data, null, 2)
-        : response.data;
-    const fileExtension = name.split(".").pop();
-    fileFetchStatus[path] = false;
-    setFilesContent({
-      ...filesContent,
-      // ...{
-      [path]: {
-        name: name,
-        content: data,
-        language: fileExtension
-          ? editorSupportedLanguages[fileExtension] || "text"
-          : "text",
+    const s3Client = new S3Client({
+      region: import.meta.env.VITE_S3_REGION!,
+      credentials: {
+        accessKeyId: s3Creds.AccessKeyId,
+        secretAccessKey: s3Creds.SecretAccessKey,
+        sessionToken: s3Creds.SessionToken,
       },
-      // },
     });
+    const command = new GetObjectCommand({
+      Bucket: import.meta.env.VITE_BUCKET!,
+      Key: `users/${username}/${path}`,
+    });
+    const response = await s3Client.send(command);
+    const data = await response.Body?.transformToString();
+    if (data) {
+      const fileExtension = name.split(".").pop();
+      setFilesContent({
+        ...filesContent,
+        // ...{
+        [path]: {
+          name: name,
+          content: data,
+          language: fileExtension
+            ? editorSupportedLanguages[fileExtension] || "text"
+            : "text",
+        },
+      });
+    }
+    fileFetchStatus[path] = false;
   } catch (error) {
+    fileFetchStatus[path] = false;
+    if (error.name === "ExpiredToken") {
+      console.log("S3 credentials expired");
+      const newS3Creds = await getS3Creds();
+      if (newS3Creds) {
+        setS3Creds(newS3Creds);
+        await loadFile(path, name, fileFetchStatus);
+      }
+    }
     console.error(error);
   }
 };
-
 export const sortNodeChildren = (node: TreeFolderNode) => {
   if (node.children.length === 0) return;
   node.children.sort((a, b) => {

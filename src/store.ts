@@ -3,6 +3,7 @@ import { TreeFileNode, TreeFolderNode } from "./constants";
 import zukeeper from "zukeeper";
 import { devtools } from "zustand/middleware";
 import { GitRepoInfo } from "./types/git";
+import { SessionCredentials } from "@aws-sdk/client-s3";
 
 type UserStore = {
   email: string;
@@ -79,9 +80,10 @@ export type SelectedFilePath = {
 
 type WorkspaceStore = {
   name: string;
-  link: string;
-  baseLink: string;
-  policy: string;
+  // link: string;
+  s3Creds: SessionCredentials | null;
+  // baseLink: string;
+  // policy: string;
   fileStructure: Array<TreeFileNode | TreeFolderNode> | null;
   selectedFilePath: SelectedFilePath;
   filesContent: FileContentObj;
@@ -102,14 +104,16 @@ type WorkspaceStore = {
   setLastPathBeforeClosingEditor: (path: string) => void;
   setWorkspaceData: (
     name: string,
-    link: string,
-    baseLink: string,
-    policy: string,
+    // link: string,
+    s3Creds: SessionCredentials | null,
+    // baseLink: string,
+    // policy: string,
     fileStructure: Array<TreeFileNode | TreeFolderNode> | null
   ) => void;
   setFileStructure: (
     fileStructure: Array<TreeFileNode | TreeFolderNode>
   ) => void;
+  setS3Creds: (s3Creds: SessionCredentials | null) => void;
   setSelectedFilePath: (
     path: SelectedFilePath | ((path: SelectedFilePath) => SelectedFilePath)
   ) => void;
@@ -177,9 +181,10 @@ export const useWorkspaceStore = create<WorkspaceStore>(
   devtools(
     (set) => ({
       name: "",
-      link: "",
-      baseLink: "",
-      policy: "",
+      // link: "",
+      s3Creds: null,
+      // baseLink: "",
+      // policy: "",
       fileStructure: null,
       selectedFilePath: {},
       filesContent: {},
@@ -192,14 +197,11 @@ export const useWorkspaceStore = create<WorkspaceStore>(
       searchPosition: null,
       openPathAtTerminal: null,
       shouldBeginExitWorkspaceProcess: false,
-      setWorkspaceData: (name, link, baseLink, policy, fileStructure) =>
-        set(
-          { name, link, baseLink, policy, fileStructure },
-          undefined,
-          "setWorkspaceData"
-        ),
+      setWorkspaceData: (name, s3Creds, fileStructure) =>
+        set({ name, s3Creds, fileStructure }, undefined, "setWorkspaceData"),
       setFileStructure: (fileStructure) =>
         set({ fileStructure }, undefined, "setFileStructure"),
+      setS3Creds: (s3Creds) => set({ s3Creds }, undefined, "setS3Creds"),
       setSelectedFilePath: (path) => {
         set(
           (state) => ({
@@ -269,9 +271,10 @@ export const useWorkspaceStore = create<WorkspaceStore>(
         set(
           {
             name: "",
-            link: "",
-            baseLink: "",
-            policy: "",
+            // link: "",
+            // baseLink: "",
+            // policy: "",
+            s3Creds: null,
             fileStructure: null,
             selectedFilePath: {},
             filesContent: {},

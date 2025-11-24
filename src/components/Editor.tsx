@@ -18,7 +18,7 @@ import { Symbol } from "../types/symbol";
 import githubDarkTheme from "../lib/github-dark-theme";
 import debounce from "lodash.debounce";
 import * as ts from "typescript";
-// @ts-ignore
+// @ts-expect-error - DiffMatchPatch doesn't have TypeScript definitions
 import DiffMatchPatch from "diff-match-patch";
 
 import FileTabBar from "./FileTabBar";
@@ -33,6 +33,7 @@ import {
 } from "../constants";
 import { useHotkeys } from "react-hotkeys-hook";
 import { parsePatch, reversePatch, applyPatch, createPatch } from "diff";
+import { useLSPClient } from "../hooks/use-lsp-client";
 
 // separate editor and monaco type from OnMount
 type IStandaloneCodeEditor = Parameters<OnMount>[0];
@@ -101,6 +102,23 @@ const Editor = ({
     regular: false,
   });
   const committedContentRef = useRef<{ [path: string]: string }>({});
+
+  // Initialize LSP support for enhanced language features
+  // This configures TypeScript/JavaScript built-in services and provides
+  // foundation for connecting to external language servers if available
+  const currentLanguage = useMemo(() => {
+    if (!currSelectedFilePath.path || !filesContent[currSelectedFilePath.path]) {
+      return "";
+    }
+    return filesContent[currSelectedFilePath.path].language;
+  }, [currSelectedFilePath.path, filesContent]);
+
+  useLSPClient(
+    monacoRef.current,
+    currentLanguage,
+    undefined, // LSP server URL can be configured here if backend supports it
+    currSelectedFilePath.path
+  );
 
   // useEffect(() => {
   //   setCurrSelectedFilePath(selectedFilePath[editorId]);

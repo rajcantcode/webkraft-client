@@ -7,6 +7,19 @@ Currently, two official plugins are available:
 - [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md) uses [Babel](https://babeljs.io/) for Fast Refresh
 - [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
 
+## Features
+
+### Monaco Editor with LSP Support
+
+This project includes an integrated Monaco Editor with Language Server Protocol (LSP) support for enhanced code intelligence:
+
+- **Enhanced TypeScript/JavaScript IntelliSense** with optimized compiler options
+- **Real-time diagnostics** for syntax and semantic validation
+- **React/JSX support** out of the box
+- **Extensible architecture** for connecting to external language servers
+
+See [LSP Integration Documentation](docs/LSP_INTEGRATION.md) for details on configuration and usage.
+
 ## Expanding the ESLint configuration
 
 If you are developing a production application, we recommend updating the configuration to enable type aware lint rules:

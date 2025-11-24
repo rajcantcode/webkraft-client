@@ -20,50 +20,75 @@ export class LSPClientManager {
    * Configure TypeScript compiler options for better IntelliSense
    * Accepts monaco instance from @monaco-editor/react
    */
-  configureTypeScriptDefaults(monacoInstance: any) {
+  configureTypeScriptDefaults(monacoInstance: unknown) {
+    // Type guard to check if monacoInstance has the expected structure
+    if (
+      !monacoInstance ||
+      typeof monacoInstance !== "object" ||
+      !("languages" in monacoInstance)
+    ) {
+      console.error("Invalid monaco instance provided");
+      return;
+    }
+
+    const monaco = monacoInstance as {
+      languages: {
+        typescript: {
+          javascriptDefaults: {
+            setCompilerOptions: (options: Record<string, unknown>) => void;
+            setDiagnosticsOptions: (options: Record<string, boolean>) => void;
+          };
+          typescriptDefaults: {
+            setCompilerOptions: (options: Record<string, unknown>) => void;
+            setDiagnosticsOptions: (options: Record<string, boolean>) => void;
+          };
+          ScriptTarget: Record<string, number>;
+          ModuleResolutionKind: Record<string, number>;
+          ModuleKind: Record<string, number>;
+          JsxEmit: Record<string, number>;
+        };
+      };
+    };
+
     // Configure JavaScript defaults
-    monacoInstance.languages.typescript.javascriptDefaults.setCompilerOptions({
-      target: monacoInstance.languages.typescript.ScriptTarget.ES2020,
+    monaco.languages.typescript.javascriptDefaults.setCompilerOptions({
+      target: monaco.languages.typescript.ScriptTarget.ES2020,
       allowNonTsExtensions: true,
       moduleResolution:
-        monacoInstance.languages.typescript.ModuleResolutionKind.NodeJs,
-      module: monacoInstance.languages.typescript.ModuleKind.CommonJS,
+        monaco.languages.typescript.ModuleResolutionKind.NodeJs,
+      module: monaco.languages.typescript.ModuleKind.CommonJS,
       noEmit: true,
       esModuleInterop: true,
-      jsx: monacoInstance.languages.typescript.JsxEmit.React,
+      jsx: monaco.languages.typescript.JsxEmit.React,
       reactNamespace: "React",
       allowJs: true,
       typeRoots: ["node_modules/@types"],
     });
 
     // Configure TypeScript defaults
-    monacoInstance.languages.typescript.typescriptDefaults.setCompilerOptions({
-      target: monacoInstance.languages.typescript.ScriptTarget.ES2020,
+    monaco.languages.typescript.typescriptDefaults.setCompilerOptions({
+      target: monaco.languages.typescript.ScriptTarget.ES2020,
       allowNonTsExtensions: true,
       moduleResolution:
-        monacoInstance.languages.typescript.ModuleResolutionKind.NodeJs,
-      module: monacoInstance.languages.typescript.ModuleKind.CommonJS,
+        monaco.languages.typescript.ModuleResolutionKind.NodeJs,
+      module: monaco.languages.typescript.ModuleKind.CommonJS,
       noEmit: true,
       esModuleInterop: true,
-      jsx: monacoInstance.languages.typescript.JsxEmit.React,
+      jsx: monaco.languages.typescript.JsxEmit.React,
       reactNamespace: "React",
       typeRoots: ["node_modules/@types"],
     });
 
     // Enable diagnostics
-    monacoInstance.languages.typescript.javascriptDefaults.setDiagnosticsOptions(
-      {
-        noSemanticValidation: false,
-        noSyntaxValidation: false,
-      }
-    );
+    monaco.languages.typescript.javascriptDefaults.setDiagnosticsOptions({
+      noSemanticValidation: false,
+      noSyntaxValidation: false,
+    });
 
-    monacoInstance.languages.typescript.typescriptDefaults.setDiagnosticsOptions(
-      {
-        noSemanticValidation: false,
-        noSyntaxValidation: false,
-      }
-    );
+    monaco.languages.typescript.typescriptDefaults.setDiagnosticsOptions({
+      noSemanticValidation: false,
+      noSyntaxValidation: false,
+    });
 
     console.log("TypeScript defaults configured");
   }
@@ -96,20 +121,38 @@ export class LSPClientManager {
       const messageTransports: MessageTransports = {
         reader: {
           // Simplified reader - in production, use proper implementation
-          listen: () => {},
-          onError: () => {},
-          onClose: () => {},
-          onPartialMessage: () => {},
-          dispose: () => {},
-        } as any,
+          listen: () => {
+            // Implementation required
+          },
+          onError: () => {
+            // Implementation required
+          },
+          onClose: () => {
+            // Implementation required
+          },
+          onPartialMessage: () => {
+            // Implementation required
+          },
+          dispose: () => {
+            // Implementation required
+          },
+        } as unknown as MessageTransports["reader"],
         writer: {
           // Simplified writer - in production, use proper implementation
           write: () => Promise.resolve(),
-          end: () => {},
-          onError: () => {},
-          onClose: () => {},
-          dispose: () => {},
-        } as any,
+          end: () => {
+            // Implementation required
+          },
+          onError: () => {
+            // Implementation required
+          },
+          onClose: () => {
+            // Implementation required
+          },
+          dispose: () => {
+            // Implementation required
+          },
+        } as unknown as MessageTransports["writer"],
       };
 
       // Create the language client

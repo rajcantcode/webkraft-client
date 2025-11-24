@@ -4,9 +4,13 @@ import { getLSPClientManager } from "../lib/lsp-client";
 /**
  * Hook to initialize LSP support for Monaco Editor
  * Configures TypeScript defaults and optionally connects to external LSP servers
+ * @param monacoInstance - Monaco instance from @monaco-editor/react OnMount callback
+ * @param languageId - The language ID for the current file
+ * @param lspServerUrl - Optional URL to external LSP server
+ * @param documentUri - The document URI for the current file
  */
 export function useLSPClient(
-  monacoInstance: any | null, // Monaco instance from @monaco-editor/react OnMount
+  monacoInstance: unknown | null,
   languageId: string,
   lspServerUrl?: string,
   documentUri?: string
@@ -23,7 +27,7 @@ export function useLSPClient(
     const manager = lspManagerRef.current;
 
     // Configure TypeScript/JavaScript defaults (only once)
-    if (!isConfiguredRef.current && monacoInstance.languages) {
+    if (!isConfiguredRef.current && monacoInstance && typeof monacoInstance === "object" && "languages" in monacoInstance) {
       manager.configureTypeScriptDefaults(monacoInstance);
       isConfiguredRef.current = true;
     }
@@ -41,7 +45,7 @@ export function useLSPClient(
               documentUri,
             });
           }
-        } catch (error) {
+        } catch {
           // LSP connection failed, but Monaco will still work with built-in services
           console.warn(
             `External LSP server not available for ${languageId}, using built-in Monaco language services`

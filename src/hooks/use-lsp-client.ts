@@ -45,10 +45,12 @@ export function useLSPClient(
               documentUri,
             });
           }
-        } catch {
+        } catch (error) {
           // LSP connection failed, but Monaco will still work with built-in services
+          const errorMessage = error instanceof Error ? error.message : String(error);
           console.warn(
-            `External LSP server not available for ${languageId}, using built-in Monaco language services`
+            `External LSP server not available for ${languageId}, using built-in Monaco language services. ` +
+            `Error: ${errorMessage}`
           );
         }
       };

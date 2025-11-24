@@ -96,6 +96,7 @@ export class LSPClientManager {
   /**
    * Create and start an LSP client for a specific language
    * This connects to a language server via WebSocket for advanced language features
+   * Note: Currently a stub implementation - requires proper message transport implementation
    */
   async createLanguageClient(config: LSPConfig): Promise<MonacoLanguageClient> {
     const { languageId, lspServerUrl, documentUri } = config;
@@ -114,43 +115,55 @@ export class LSPClientManager {
         webSocket.addEventListener("error", (error) => reject(error));
       });
 
-      // Create message transports using WebSocket
-      // Note: For a complete implementation, you would need to implement
-      // WebSocket message reader/writer or use a library that provides them
-      // This is a placeholder that shows the structure
+      // IMPORTANT: This is a stub implementation
+      // For production use, you need to implement proper WebSocket message reader/writer
+      // using a library like 'vscode-ws-jsonrpc' or similar
+      
+      // Validate that this is not being used in production without proper implementation
+      if (process.env.NODE_ENV === "production") {
+        throw new Error(
+          "LSP client transport is not fully implemented. " +
+          "Please implement proper WebSocket message reader/writer before using in production."
+        );
+      }
+
+      // Stub message transports - DO NOT USE IN PRODUCTION
       const messageTransports: MessageTransports = {
         reader: {
           // Simplified reader - in production, use proper implementation
           listen: () => {
-            // Implementation required
+            console.warn("LSP reader.listen() called but not implemented");
           },
           onError: () => {
-            // Implementation required
+            console.warn("LSP reader.onError() called but not implemented");
           },
           onClose: () => {
-            // Implementation required
+            console.warn("LSP reader.onClose() called but not implemented");
           },
           onPartialMessage: () => {
-            // Implementation required
+            console.warn("LSP reader.onPartialMessage() called but not implemented");
           },
           dispose: () => {
-            // Implementation required
+            console.warn("LSP reader.dispose() called but not implemented");
           },
         } as unknown as MessageTransports["reader"],
         writer: {
           // Simplified writer - in production, use proper implementation
-          write: () => Promise.resolve(),
+          write: () => {
+            console.warn("LSP writer.write() called but not implemented");
+            return Promise.resolve();
+          },
           end: () => {
-            // Implementation required
+            console.warn("LSP writer.end() called but not implemented");
           },
           onError: () => {
-            // Implementation required
+            console.warn("LSP writer.onError() called but not implemented");
           },
           onClose: () => {
-            // Implementation required
+            console.warn("LSP writer.onClose() called but not implemented");
           },
           dispose: () => {
-            // Implementation required
+            console.warn("LSP writer.dispose() called but not implemented");
           },
         } as unknown as MessageTransports["writer"],
       };
@@ -182,8 +195,15 @@ export class LSPClientManager {
       console.log(`LSP client started for ${languageId}`);
       return client;
     } catch (error) {
-      console.error(`Failed to create LSP client for ${languageId}:`, error);
-      throw error;
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error(`Failed to create LSP client for ${languageId}: ${errorMessage}`);
+      
+      // Wrap in a more user-friendly error
+      throw new Error(
+        `Unable to connect to language server for ${languageId}. ` +
+        `Please ensure the language server is running and accessible at ${lspServerUrl}. ` +
+        `Details: ${errorMessage}`
+      );
     }
   }
 

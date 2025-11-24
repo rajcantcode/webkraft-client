@@ -34,6 +34,7 @@
     "lodash.debounce": "^4.0.8",
     "lucide-react": "^0.469.0",
     "material-icon-theme": "^5.10.0",
+    "monaco-languageclient": "^10.3.0",
     "nanoid": "^5.0.9",
     "next-themes": "^0.4.6",
     "react": "^18.3.1",
@@ -48,6 +49,9 @@
     "sonner": "^2.0.7",
     "tailwind-merge": "^2.5.1",
     "uuid": "^10.0.0",
+    "vscode-jsonrpc": "^8.2.1",
+    "vscode-languageclient": "^9.0.1",
+    "vscode-languageserver-protocol": "^3.17.5",
     "zustand": "^4.5.5"
   },
   "devDependencies": {
